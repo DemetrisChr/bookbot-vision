@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
+import time
+import pytesseract
 
 
 class Rectangle:
@@ -35,6 +37,7 @@ class BooksImage:
         self.img_rgb = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2RGB)
         self.img_gray = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2GRAY)
         self.img_binary = None
+        self.img_eroded = None
         self.label_codes = []
         self.label_rectangles = []
         self.M, self.N = self.img_gray.shape  # M - rows, N - columns
@@ -63,7 +66,7 @@ class BooksImage:
             self.img_binary[:, start:end] = 255 * \
                 (self.img_binary[:, start:end] > threshold)
 
-    def erodeBinaryImage(self, kernel_shape=(10, 10), iterations=1):
+    def erodeBinaryImage(self, kernel_shape=(5, 5), iterations=1):
         """
         Applies erosion to the binary image in order to remove small white
         regions which can also be joined to the labels, which can be
@@ -71,13 +74,14 @@ class BooksImage:
         still be detected since we expect them to be large white regions.
         """
         kernel = np.ones(kernel_shape, np.uint8)
-        self.img_binary = cv.erode(self.img_binary, kernel, iterations)
+        self.img_binary = self.img_binary.copy()
+        self.img_eroded = cv.erode(self.img_binary, kernel, iterations)
 
     def findLabels(self, contour_approx_strength=0.05):
         """
         Locates the labels using the binary image
         """
-        contours, hierarchy = cv.findContours(self.img_binary, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv.findContours(self.img_eroded, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         largest_contours = list(filter(lambda c: cv.contourArea(c) >= 20000, contours))
 
         approximated_contours = []
@@ -91,13 +95,34 @@ class BooksImage:
 
         self.label_rectangles = removeInnerRectangles(self.label_rectangles)
 
-    def parseLabels():
+    def parseLabels(self):
         """
         Uses Optical Character Recognition (OCR) to parse the text from the
         labels.
         """
-        # TODO
-        return
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        # counter = 1
+        for rectangle in self.label_rectangles:
+            (x, y, w, h) = rectangle.unpack()
+            img_slice = self.img_binary[y:y+h, x:x+w]
+            # cv.imwrite('label'+str(counter)+'.png', self.img_binary[y:y+h, x:x+w])
+
+            # Resize image
+            scale_percent = 200  # Percentage of original size
+            width = int(img_slice.shape[1] * scale_percent / 100)
+            height = int(img_slice.shape[0] * scale_percent / 100)
+            dim = (width, height)
+            img_slice = cv.resize(img_slice, dim, interpolation=cv.INTER_AREA)
+
+            # Add white border around the image
+            img_slice = cv.copyMakeBorder(img_slice, top=100, bottom=100, left=100, right=100, borderType=cv.BORDER_CONSTANT, value=255)
+
+            # Dilate the image
+            kernel = np.ones((5, 5), np.uint8)
+            img_slice = cv.dilate(img_slice, kernel, iterations=1)
+
+            self.label_codes.append(pytesseract.image_to_string(img_slice))
+            # counter += 1
 
 
 def displayImage(img, cmap='gray', rectangles=None):
@@ -115,9 +140,15 @@ def removeInnerRectangles(rectangles):
 
 
 if __name__ == '__main__':
-    books = BooksImage('../notebooks/pictures/books1.jpg')
+    start_time = time.time()
+    books = BooksImage('../notebooks/pictures/books5.jpg')
     books.generateBinaryImage()
     books.erodeBinaryImage()
     books.findLabels()
+    books.parseLabels()
+    for label in books.label_codes:
+        print(label)
+        print('-----')
+    print("--- %s seconds ---" % (time.time() - start_time))
     displayImage(books.img_binary, rectangles=books.label_rectangles)
     displayImage(books.img_bgr, rectangles=books.label_rectangles)
