@@ -72,8 +72,10 @@ class BooksImage:
         """
         Locates the labels using the binary image
         """
+        min_contour_area = self.M * self.N / 200
+        max_contour_area = self.M * self.N / 50
         contours, hierarchy = cv.findContours(self.img_eroded, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-        largest_contours = list(filter(lambda c: cv.contourArea(c) >= 20000, contours))
+        largest_contours = list(filter(lambda c: cv.contourArea(c) >= min_contour_area and cv.contourArea(c) <= max_contour_area, contours))
 
         approximated_contours = []
         for contour in largest_contours:
@@ -156,8 +158,8 @@ def removeInnerRectangles(rectangles):
 
 if __name__ == '__main__':
     start_time = time.time()
-    books = BooksImage('../notebooks/pictures/books11.jpg')
-    books.generateBinaryImage()
+    books = BooksImage('../notebooks/pictures/books13.png')
+    books.generateBinaryImage(num_intervals=20)
     books.erodeBinaryImage()
     books.findLabels()
     books.parseLabels()
