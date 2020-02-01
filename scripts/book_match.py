@@ -39,16 +39,16 @@ def levenshtein(s1, s2):
 
 # Returns the name of the book which is closest match to input read_label from the datbase
 def closest_label_match(read_label):
-min_cost = 1000
-min_index = -1
-for i in range(0,len(database)):
-    code = database[i][0]
-    MED = levenshtein(code,read_label)
-    if(MED<min_cost):
-        min_cost = MED
-        min_index = i
-print(min_cost)
-# Cutoff point 20, if higher cost empty name is returned
-if(min_cost>20):
-    return "", 1000
-return database[min_index][1], min_cost
+    min_cost = 1000
+    min_index = -1
+    for i in range(0,len(database)):
+        code = database[i][0]
+        MED = levenshtein(code,read_label)
+        if(MED<min_cost):
+            min_cost = MED
+            min_index = i
+    print(min_cost)
+    # Cutoff point 20, if higher cost empty name is returned
+    if(min_cost>20):
+        return "", 1000
+    return database[min_index][1], min_cost
