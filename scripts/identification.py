@@ -53,18 +53,9 @@ class BooksImage:
         self.img_binary = self.img_gray.copy()
 
         for interval_idx in range(num_intervals):
-            interval_luminosities = []
-            for row_idx in range(self.M):
-                start = int(interval_idx * interval_width)
-                end = int((interval_idx + 1) * interval_width)
-                luminosity = np.sum(self.img_gray[row_idx, start:end]) \
-                    / interval_width
-                interval_luminosities.append(luminosity)
-            interval_max_luminosity = np.max(interval_luminosities)
-
-            threshold = threshold_coef * interval_max_luminosity
-            self.img_binary[:, start:end] = 255 * \
-                (self.img_binary[:, start:end] > threshold)
+            start = int(interval_idx * interval_width)
+            end = int((interval_idx + 1) * interval_width)
+            self.img_binary[:, start:end] = rowLuminosityBinarisation(self.img_binary[:, start:end], num_intervals, threshold_coef)
 
     def erodeBinaryImage(self, kernel_shape=(5, 5), iterations=1):
         """
@@ -101,11 +92,11 @@ class BooksImage:
         labels.
         """
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-        # counter = 1
+        counter = 1
         for rectangle in self.label_rectangles:
             (x, y, w, h) = rectangle.unpack()
             img_slice = self.img_binary[y:y+h, x:x+w]
-            # cv.imwrite('label'+str(counter)+'.png', self.img_binary[y:y+h, x:x+w])
+            cv.imwrite('label'+str(counter)+'.png', self.img_gray[y:y+h, x:x+w])
 
             # Resize image
             scale_percent = 200  # Percentage of original size
@@ -121,11 +112,31 @@ class BooksImage:
             kernel = np.ones((5, 5), np.uint8)
             img_slice = cv.dilate(img_slice, kernel, iterations=1)
 
-            self.label_codes.append(pytesseract.image_to_string(img_slice))
-            # counter += 1
+            self.label_codes.append(pytesseract.image_to_string(img_slice, config='config'))
+            counter += 1
+
+
+def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
+    """
+    Binarises an image by using binary thresholding. The threshold is
+    calculated as the product of threshold_coef and the maximum row
+    luminosity. Luminosity of a row is the mean intensity of its pixels
+    """
+    M, N = img.shape
+    row_luminosities = []
+    for row_idx in range(M):
+        luminosity = np.sum(img[row_idx, :]) / N
+        row_luminosities.append(luminosity)
+    max_row_luminosity = np.max(row_luminosities)
+    threshold = threshold_coef * max_row_luminosity
+    return 255 * (img > threshold)
 
 
 def displayImage(img, cmap='gray', rectangles=None):
+    """
+    Displays an image within a matplotlib figure alongside any rectangles
+    passed to this function.
+    """
     plt.figure(figsize=(16, 12))
     if rectangles:
         for rectangle in rectangles:
@@ -136,12 +147,16 @@ def displayImage(img, cmap='gray', rectangles=None):
 
 
 def removeInnerRectangles(rectangles):
+    """
+    Removes all inner rectangles from a list of rectangles. A rectangle is
+    considered inner if it is within any other rectangle from the list.
+    """
     return list(filter(lambda rec: not rec.isInnerRectangle(rectangles), rectangles))
 
 
 if __name__ == '__main__':
     start_time = time.time()
-    books = BooksImage('../notebooks/pictures/books5.jpg')
+    books = BooksImage('../notebooks/pictures/books11.jpg')
     books.generateBinaryImage()
     books.erodeBinaryImage()
     books.findLabels()
