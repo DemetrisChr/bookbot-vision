@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 import time
 import pytesseract
+from scipy.signal import find_peaks, peak_widths
 
 
 class Rectangle:
@@ -41,6 +42,7 @@ class BooksImage:
         self.label_codes = []
         self.label_rectangles = []
         self.M, self.N = self.img_gray.shape  # M - rows, N - columns
+        self.row_bounds = None
 
     def generateBinaryImage(self, num_intervals=20, threshold_coef=0.85):
         """
@@ -68,13 +70,26 @@ class BooksImage:
         self.img_binary = self.img_binary.copy()
         self.img_eroded = cv.erode(self.img_binary, kernel, iterations)
 
-    def findLabels(self, contour_approx_strength=0.05):
+    def findRowBounds(self):
         """
-        Locates the labels using the binary image
+        Finds the rows where the labels could be located
         """
-        min_contour_area = self.M * self.N / 200
-        max_contour_area = self.M * self.N / 50
-        contours, hierarchy = cv.findContours(self.img_eroded, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        count_row = np.sum(self.img_binary, axis=1) / 255  # Number of white pixels in each row
+        moving_average_row = movingAverage(count_row, 200)  # Moving average of white pixels for each row
+
+        min_height = int(self.N / 3)  # Minimum number of white pixels for row to be considered for local max
+        peaks, _ = find_peaks(moving_average_row, height=min_height)  # Finds the local maxima
+        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.95)
+        self.row_bounds = list(zip(top.astype('int'), bottom.astype('int')))
+        print(self.row_bounds)
+
+    def findLabelsWithinBounds(self, top, bottom, contour_approx_strength=0.05):
+        """
+        Finds labels that are within the specified bounds
+        """
+        min_contour_area = self.M * self.N / 600
+        max_contour_area = self.M * self.N / 25
+        contours, hierarchy = cv.findContours(self.img_eroded[top:bottom, :], cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         largest_contours = list(filter(lambda c: cv.contourArea(c) >= min_contour_area and cv.contourArea(c) <= max_contour_area, contours))
 
         approximated_contours = []
@@ -84,9 +99,19 @@ class BooksImage:
             approximated_contours.append(approx)
 
         for contour in approximated_contours:
-            self.label_rectangles.append(Rectangle(*cv.boundingRect(contour)))
+            x, y, w, h = cv.boundingRect(contour)
+            y += top
+            self.label_rectangles.append(Rectangle(x, y, w, h))
 
-        self.label_rectangles = removeInnerRectangles(self.label_rectangles)
+    def findLabels(self, contour_approx_strength=0.05):
+        """
+        Locates the labels using the binary image
+        """
+        self.findRowBounds()
+        for top, bottom in self.row_bounds:
+            self.findLabelsWithinBounds(top, bottom)
+
+        # self.label_rectangles = removeInnerRectangles(self.label_rectangles)
 
     def parseLabels(self):
         """
@@ -97,8 +122,8 @@ class BooksImage:
         counter = 1
         for rectangle in self.label_rectangles:
             (x, y, w, h) = rectangle.unpack()
-            img_slice = self.img_binary[y:y+h, x:x+w]
-            cv.imwrite('label'+str(counter)+'.png', self.img_gray[y:y+h, x:x+w])
+            img_slice = self.img_binary[y:y + h, x:x + w]
+            cv.imwrite('label' + str(counter) + '.png', self.img_gray[y:y + h, x: x + w])
 
             # Resize image
             scale_percent = 200  # Percentage of original size
@@ -143,7 +168,7 @@ def displayImage(img, cmap='gray', rectangles=None):
     if rectangles:
         for rectangle in rectangles:
             (x, y, w, h) = rectangle.unpack()
-            cv.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 5)
+            cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
     plt.imshow(img, cmap)
     plt.show()
 
@@ -156,9 +181,17 @@ def removeInnerRectangles(rectangles):
     return list(filter(lambda rec: not rec.isInnerRectangle(rectangles), rectangles))
 
 
+def movingAverage(values, window_size):
+    """
+    Calculates the moving average of a given list of values
+    """
+    window = np.ones(int(window_size)) / float(window_size)
+    return np.convolve(values, window, 'same')
+
+
 if __name__ == '__main__':
     start_time = time.time()
-    books = BooksImage('../notebooks/pictures/books13.png')
+    books = BooksImage('../notebooks/pictures/books5.jpg')
     books.generateBinaryImage(num_intervals=20)
     books.erodeBinaryImage()
     books.findLabels()
