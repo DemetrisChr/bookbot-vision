@@ -1,3 +1,16 @@
+# Temporary list until a database is set up
+label_codes = ["F\n128\n.65\n.C3\nCoo", "F\n229\nVau.", "F\n334\n.S4\nSwa.", "E\n441\nAsh.", "F\n1025\nNor.", "F\n394\n.H857\nCar."]
+label_codes = [code.replace('\n', '') for code in label_codes]
+maxlength = max([len(code) for code in label_codes])
+label_codes = [code.ljust(maxlength, ".") for code in label_codes]
+book_names = ["A description of the New York Central Park",
+             "American genesis",
+             "The Selma Campaign",
+             "Slavery, Capitalism, and Politics",
+             "Northern Exposures",
+             "Red Scare"]
+database = list(zip(label_codes, book_names))
+
 # Calculates the minimum edit distance between s1 and s2
 def levenshtein(s1, s2):
 
@@ -24,18 +37,18 @@ def levenshtein(s1, s2):
 
     return previous_row[-1]
 
-    # Returns the name of the book which is closest match to input read_label from the datbase
-    def closest_label_match(read_label):
-        min_cost = 1000
-        min_index = -1
-        for i in range(0,len(database)):
-            code = database[i][0]
-            MED = levenshtein(code,read_label)
-            if(MED<min_cost):
-                min_cost = MED
-                min_index = i
-        print(min_cost)
-        # Cutoff point 20, if higher cost empty name is returned
-        if(min_cost>20):
-            return "", 1000
-        return database[min_index][1], min_cost
+# Returns the name of the book which is closest match to input read_label from the datbase
+def closest_label_match(read_label):
+min_cost = 1000
+min_index = -1
+for i in range(0,len(database)):
+    code = database[i][0]
+    MED = levenshtein(code,read_label)
+    if(MED<min_cost):
+        min_cost = MED
+        min_index = i
+print(min_cost)
+# Cutoff point 20, if higher cost empty name is returned
+if(min_cost>20):
+    return "", 1000
+return database[min_index][1], min_cost
