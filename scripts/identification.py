@@ -1,9 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import cv2 as cv
 import time
 import pytesseract
 from scipy.signal import find_peaks, peak_widths
+from book_match import closest_label_match
 
 
 class Rectangle:
@@ -58,6 +58,7 @@ class BooksImage:
             start = int(interval_idx * interval_width)
             end = int((interval_idx + 1) * interval_width)
             self.img_binary[:, start:end] = rowLuminosityBinarisation(self.img_binary[:, start:end], num_intervals, threshold_coef)
+        cv.imwrite('test.png', self.img_binary)
 
     def erodeBinaryImage(self, kernel_shape=(5, 5), iterations=1):
         """
@@ -74,12 +75,12 @@ class BooksImage:
         """
         Finds the rows where the labels could be located
         """
-        count_row = np.sum(self.img_binary, axis=1) / 255  # Number of white pixels in each row
-        moving_average_row = movingAverage(count_row, 200)  # Moving average of white pixels for each row
+        count_row = np.sum(self.img_eroded, axis=1) / 255  # Number of white pixels in each row
+        moving_average_row = movingAverage(count_row, 300)  # Moving average of white pixels for each row
 
-        min_height = int(self.N / 3)  # Minimum number of white pixels for row to be considered for local max
+        min_height = int(self.N / 2)  # Minimum number of white pixels for row to be considered for local max
         peaks, _ = find_peaks(moving_average_row, height=min_height)  # Finds the local maxima
-        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.95)
+        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.8)
         self.row_bounds = list(zip(top.astype('int'), bottom.astype('int')))
         print(self.row_bounds)
 
@@ -118,12 +119,14 @@ class BooksImage:
         Uses Optical Character Recognition (OCR) to parse the text from the
         labels.
         """
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # For Windows only
         counter = 1
         for rectangle in self.label_rectangles:
             (x, y, w, h) = rectangle.unpack()
-            img_slice = self.img_binary[y:y + h, x:x + w]
-            cv.imwrite('label' + str(counter) + '.png', self.img_gray[y:y + h, x: x + w])
+            img_slice = self.img_gray[y:y + h, x:x + w].copy()
+
+            # Binarise the image
+            img_slice = rowLuminosityBinarisation(img_slice, num_intervals=1, threshold_coef=0.8).astype('uint8')
 
             # Resize image
             scale_percent = 200  # Percentage of original size
@@ -135,9 +138,13 @@ class BooksImage:
             # Add white border around the image
             img_slice = cv.copyMakeBorder(img_slice, top=100, bottom=100, left=100, right=100, borderType=cv.BORDER_CONSTANT, value=255)
 
+            img_slice = cv.GaussianBlur(img_slice, (5, 5), 1)
+
             # Dilate the image
             kernel = np.ones((5, 5), np.uint8)
             img_slice = cv.dilate(img_slice, kernel, iterations=1)
+
+            cv.imwrite('label' + str(counter) + '.png', img_slice)
 
             self.label_codes.append(pytesseract.image_to_string(img_slice, config='config'))
             counter += 1
@@ -159,18 +166,30 @@ def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     return 255 * (img > threshold)
 
 
+"""
 def displayImage(img, cmap='gray', rectangles=None):
-    """
-    Displays an image within a matplotlib figure alongside any rectangles
-    passed to this function.
-    """
+    # Displays an image within a matplotlib figure alongside any rectangles
+    # passed to this function.
     plt.figure(figsize=(16, 12))
     if rectangles:
         for rectangle in rectangles:
             (x, y, w, h) = rectangle.unpack()
             cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
-    plt.imshow(img, cmap)
+    plt.imshow(cv.GaussianBlur(img, (5, 5), 1), cmap)
     plt.show()
+"""
+
+
+def displayImage2(img, rectangles=None):
+    cv.namedWindow("Display window", cv.WINDOW_AUTOSIZE)
+    if rectangles:
+        for rectangle in rectangles:
+            (x, y, w, h) = rectangle.unpack()
+            cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
+    M, N = img.shape[0], img.shape[1]
+    img = cv.resize(img, (int(N / 4), int(M / 4)))
+    cv.imshow('Display window', img)
+    cv.waitKey(0)
 
 
 def removeInnerRectangles(rectangles):
@@ -191,14 +210,18 @@ def movingAverage(values, window_size):
 
 if __name__ == '__main__':
     start_time = time.time()
-    books = BooksImage('../notebooks/pictures/books5.jpg')
+    books = BooksImage('../notebooks/pictures/books8.jpg')
     books.generateBinaryImage(num_intervals=20)
     books.erodeBinaryImage()
     books.findLabels()
     books.parseLabels()
     for label in books.label_codes:
-        print(label)
-        print('-----')
+        if len(label) != 0:
+            print(label)
+            match, cost = closest_label_match(label)
+            print('Closest match: ' + str(match))
+            print('Cost         : ' + str(cost))
+            print('-----')
     print("--- %s seconds ---" % (time.time() - start_time))
-    displayImage(books.img_binary, rectangles=books.label_rectangles)
-    displayImage(books.img_bgr, rectangles=books.label_rectangles)
+    displayImage2(books.img_binary, rectangles=books.label_rectangles)
+    displayImage2(books.img_bgr, rectangles=books.label_rectangles)
