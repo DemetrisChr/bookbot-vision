@@ -78,7 +78,7 @@ class BooksImage:
         count_row = np.sum(self.img_eroded, axis=1) / 255  # Number of white pixels in each row
         moving_average_row = movingAverage(count_row, 300)  # Moving average of white pixels for each row
 
-        min_height = int(self.N / 2)  # Minimum number of white pixels for row to be considered for local max
+        min_height = int(self.N / 5)  # Minimum number of white pixels for row to be considered for local max
         peaks, _ = find_peaks(moving_average_row, height=min_height)  # Finds the local maxima
         _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.8)
         self.row_bounds = list(zip(top.astype('int'), bottom.astype('int')))
@@ -146,7 +146,7 @@ class BooksImage:
 
             cv.imwrite('label' + str(counter) + '.png', img_slice)
 
-            self.label_codes.append(pytesseract.image_to_string(img_slice, config='config'))
+            self.label_codes.append(pytesseract.image_to_string(img_slice))  # , config='bazaar --oem 0'))
             counter += 1
 
 
@@ -210,18 +210,23 @@ def movingAverage(values, window_size):
 
 if __name__ == '__main__':
     start_time = time.time()
-    books = BooksImage('../notebooks/pictures/books8.jpg')
+    books = BooksImage('../notebooks/pictures/books13.png')
     books.generateBinaryImage(num_intervals=20)
     books.erodeBinaryImage()
     books.findLabels()
     books.parseLabels()
     for label in books.label_codes:
+        if len(label) == 0:
+            print('=============')
+            print('EMPTY LABEL')
         if len(label) != 0:
+            print('=============')
             print(label)
             match, cost = closest_label_match(label)
-            print('Closest match: ' + str(match))
-            print('Cost         : ' + str(cost))
-            print('-----')
-    print("--- %s seconds ---" % (time.time() - start_time))
+            print('Best match:    ' + str(match))
+            print('Edit distance: ' + str(cost))
+    print('==========================')
+    print('TOTAL RUNTIME: %s seconds' % (time.time() - start_time))
+    print('==========================')
     displayImage2(books.img_binary, rectangles=books.label_rectangles)
     displayImage2(books.img_bgr, rectangles=books.label_rectangles)
