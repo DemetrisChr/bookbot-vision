@@ -1,9 +1,11 @@
 import numpy as np
 import cv2 as cv
 import time
-import pytesseract
+import matplotlib.pyplot as plt
 from scipy.signal import find_peaks, peak_widths
 from book_match import closest_label_match
+from PIL import Image
+import tesserocr
 
 
 class Rectangle:
@@ -119,7 +121,7 @@ class BooksImage:
         Uses Optical Character Recognition (OCR) to parse the text from the
         labels.
         """
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # For Windows only
+        # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # For Windows only
         counter = 1
         for rectangle in self.label_rectangles:
             (x, y, w, h) = rectangle.unpack()
@@ -146,7 +148,8 @@ class BooksImage:
 
             cv.imwrite('label' + str(counter) + '.png', img_slice)
 
-            self.label_codes.append(pytesseract.image_to_string(img_slice))  # , config='bazaar --oem 0'))
+            self.label_codes.append(tesserocr.image_to_text(Image.fromarray(img_slice)))
+            #self.label_codes.append(pytesseract.image_to_string(img_slice))  # , config='bazaar --oem 0'))
             counter += 1
 
 
@@ -166,7 +169,6 @@ def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     return 255 * (img > threshold)
 
 
-"""
 def displayImage(img, cmap='gray', rectangles=None):
     # Displays an image within a matplotlib figure alongside any rectangles
     # passed to this function.
@@ -177,7 +179,6 @@ def displayImage(img, cmap='gray', rectangles=None):
             cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
     plt.imshow(cv.GaussianBlur(img, (5, 5), 1), cmap)
     plt.show()
-"""
 
 
 def displayImage2(img, rectangles=None):
@@ -228,5 +229,5 @@ if __name__ == '__main__':
     print('==========================')
     print('TOTAL RUNTIME: %s seconds' % (time.time() - start_time))
     print('==========================')
-    displayImage2(books.img_binary, rectangles=books.label_rectangles)
-    displayImage2(books.img_bgr, rectangles=books.label_rectangles)
+    displayImage(books.img_binary, rectangles=books.label_rectangles)
+    displayImage(books.img_rgb, rectangles=books.label_rectangles)
