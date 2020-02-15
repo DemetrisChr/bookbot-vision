@@ -167,6 +167,7 @@ def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
 
 
 """
+# USING MATPLOTLIB
 def displayImage(img, cmap='gray', rectangles=None):
     # Displays an image within a matplotlib figure alongside any rectangles
     # passed to this function.
@@ -180,12 +181,22 @@ def displayImage(img, cmap='gray', rectangles=None):
 """
 
 
-def displayImage2(img, rectangles=None):
+def plotRectangle(img, rectangle, colour=(0, 255, 0), thickness=5):
+    """
+    Plots the rectangle on the image
+    """
+    (x, y, w, h) = rectangle.unpack()
+    cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
+
+
+def displayImage(img, rectangles=None):
+    """
+    Displays image with rectangles (if there are any)
+    """
     cv.namedWindow("Display window", cv.WINDOW_AUTOSIZE)
     if rectangles:
         for rectangle in rectangles:
-            (x, y, w, h) = rectangle.unpack()
-            cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
+            plotRectangle(img, rectangle)
     M, N = img.shape[0], img.shape[1]
     img = cv.resize(img, (int(N / 4), int(M / 4)))
     cv.imshow('Display window', img)
@@ -228,5 +239,5 @@ if __name__ == '__main__':
     print('==========================')
     print('TOTAL RUNTIME: %s seconds' % (time.time() - start_time))
     print('==========================')
-    displayImage2(books.img_binary, rectangles=books.label_rectangles)
-    displayImage2(books.img_bgr, rectangles=books.label_rectangles)
+    displayImage(books.img_binary, rectangles=books.label_rectangles)
+    displayImage(books.img_bgr, rectangles=books.label_rectangles)
