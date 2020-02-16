@@ -6,7 +6,55 @@ from scipy.signal import find_peaks, peak_widths
 from book_match import closest_label_match
 
 
+class Line:
+    """
+    Class to represent a line with equation ρ = xcosθ + ysinθ.
+    ρ is the perpendicular distance from origin to the line and θ is the
+    angle formed by this perpedicular line and the x-axis measured counter-clockwise
+    To represent it in the form ax + by + c = 0 we take a = cosθ, b = sinθ, c = -ρ
+    """
+    def __init__(self, theta, rho):
+        self.theta = theta
+        self.rho = rho
+        self.a = np.cos(theta)
+        self.b = np.sin(theta)
+        self.c = -rho
+
+    def distanceFromPoint(self, point):
+        """
+        Calculates the distance of a given point (x₀, y₀) from the line using the formula
+        distance = |ax₀ + by₀ + c| / √(a² + b²)
+        """
+        x0, y0 = point
+        return np.abs(self.a * x0 + self.b * y0 + self.c) / np.linalg.norm((self.a, self.b))
+
+    def plotOnImage(self, img, colour=(255, 0, 0), thickness=5):
+        """
+        Plots the line on the given image.
+        """
+        x0 = self.a * self.rho
+        y0 = self.b * self.rho
+        pt1 = (int(x0 + 1000 * (-self.b)), int(y0 + 1000 * (self.a)))
+        pt2 = (int(x0 - 1000 * (-self.b)), int(y0 - 1000 * (self.a)))
+        cv.line(img, pt1, pt2, colour, thickness, cv.LINE_AA)
+
+    def calculateXgivenY(self, y):
+        """
+        Calculates the x-coordinate of a point on the line with the given y-coordinate.
+        """
+        return -(self.b * y + self.c) / self.a
+
+    def calculateYgivenX(self, x):
+        """
+        Calculates the y-coordinate of a point on the line with the given x-coordinate.
+        """
+        return -(self.a * x + self.c) / self.b
+
+
 class Rectangle:
+    """
+    Class to represent a rectangle with sides parallel to the coordinate axes.
+    """
     def __init__(self, x, y, w, h):
         self.x = x  # x-coordinate of top left point
         self.y = y  # y-coordinate of top left point
@@ -30,6 +78,12 @@ class Rectangle:
                     y < self.y and (self.y + self.h) < (y + h):
                 return True
         return False
+
+    def plotOnImage(self, img, colour=(0, 255, 0), thickness=5):
+        """
+        Plots the rectangle on the given image
+        """
+        cv.rectangle(img, (self.x, self.y), (self.x + self.w, self.y + self.h), colour, thickness)
 
 
 class BooksImage:
@@ -166,37 +220,20 @@ def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     return 255 * (img > threshold)
 
 
-"""
-# USING MATPLOTLIB
-def displayImage(img, cmap='gray', rectangles=None):
-    # Displays an image within a matplotlib figure alongside any rectangles
-    # passed to this function.
-    plt.figure(figsize=(16, 12))
-    if rectangles:
-        for rectangle in rectangles:
-            (x, y, w, h) = rectangle.unpack()
-            cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
-    plt.imshow(cv.GaussianBlur(img, (5, 5), 1), cmap)
-    plt.show()
-"""
-
-
-def plotRectangle(img, rectangle, colour=(0, 255, 0), thickness=5):
+def displayImage(img, rectangles=None, lines=None):
     """
-    Plots the rectangle on the image
-    """
-    (x, y, w, h) = rectangle.unpack()
-    cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
-
-
-def displayImage(img, rectangles=None):
-    """
-    Displays image with rectangles (if there are any)
+    Displays image with lines and rectangles (if there are any)
     """
     cv.namedWindow("Display window", cv.WINDOW_AUTOSIZE)
+
     if rectangles:
         for rectangle in rectangles:
-            plotRectangle(img, rectangle)
+            rectangle.plotOnImage(img)
+
+    if lines:
+        for line in lines:
+            line.plotOnImage(img)
+
     M, N = img.shape[0], img.shape[1]
     img = cv.resize(img, (int(N / 4), int(M / 4)))
     cv.imshow('Display window', img)
