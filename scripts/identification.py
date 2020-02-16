@@ -3,7 +3,7 @@ import cv2 as cv
 import time
 import pytesseract
 from scipy.signal import find_peaks, peak_widths
-from book_match import closest_label_match
+from book_match import closest_label_match, book_names
 
 
 class Line:
@@ -99,6 +99,9 @@ class Book:
         self.right_spine_bound = None
 
     def parseBookLabel(self):
+        """
+        Does some preprocessing to the image of the label and uses OCR to read the text.
+        """
         # Binarise the image
         img = rowLuminosityBinarisation(self.label_img, num_intervals=1, threshold_coef=0.8).astype('uint8')
 
@@ -123,10 +126,16 @@ class Book:
         self.label_ocr_text = pytesseract.image_to_string(self.label_img_preprocessed)  # , config='bazaar --oem 0'))
 
     def findMatch(self):
+        """
+        Finds the closest match to the label, using levenshtein distance
+        """
         if len(self.label_ocr_text) > 0:
             self.matched_title, self.match_cost = closest_label_match(self.label_ocr_text)
 
     def findSpineBoundaries(self, lines):
+        """
+        Finds the left and right boundaries of the spine of this book
+        """
         left_lines = []
         right_lines = []
         midpoint_y = self.label_rectangle.y + self.label_rectangle.h / 2
@@ -312,6 +321,7 @@ def displayImage(img, rectangles=None, lines=None):
     img = cv.resize(img_display, (int(N / 4), int(M / 4)))
     cv.imshow('Display window', img_display)
     cv.waitKey(0)
+    return img_display
 
 
 def removeInnerRectangles(rectangles):
@@ -344,6 +354,25 @@ def findClosestLineToPoint(point, lines):
     return closest_line
 
 
+def findBook(booksimg, target_title):
+    """
+    Finds the book with the given title in the image and displays its boundaries
+    """
+    target_book = None
+    min_cost = 100
+    for book in booksimg.books:
+        if book.matched_title == target_title and book.match_cost < min_cost:
+            min_cost = book.match_cost
+            target_book = book
+    if target_book:
+        print(str(target_title) + ' has been found!')
+        target_book.findSpineBoundaries(booksimg.boundary_lines)
+        img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle], lines=[target_book.left_spine_bound, target_book.right_spine_bound])
+        cv.imwrite(target_title + '.png', img_display)
+    else:
+        print(str(target_title) + ' could not be found :(')
+
+
 if __name__ == '__main__':
     start_time = time.time()
     booksimg = BooksImage('../notebooks/pictures/books13.png')
@@ -359,5 +388,11 @@ if __name__ == '__main__':
     print('==========================')
     print('TOTAL RUNTIME: %s seconds' % (time.time() - start_time))
     print('==========================')
+
     displayImage(booksimg.img_binary, rectangles=booksimg.label_rectangles)
     displayImage(booksimg.img_bgr, rectangles=booksimg.label_rectangles, lines=booksimg.boundary_lines)
+
+    print('\n==========================\n')
+    for book_title in book_names:
+        findBook(booksimg, book_title)
+        print('==========================')
