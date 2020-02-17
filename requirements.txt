@@ -4,3 +4,4 @@ opencv-python
 imutils
 scipy
 pytesseract
+opencv-contrib-python
