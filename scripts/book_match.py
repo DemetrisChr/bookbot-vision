@@ -48,7 +48,7 @@ def levenshtein(s1, s2):
 
     return previous_row[-1]
 
-# Returns the name of the book which is closest match to input read_label from the datbase
+# Returns the true label code, name of the book which is closest match to input read_label from the datbase and the cost
 def closest_label_match(read_label):
     min_cost = 1000
     min_index = -1
@@ -62,4 +62,4 @@ def closest_label_match(read_label):
     # Cutoff point 20, if higher cost empty name is returned
     if(min_cost>20):
         return "", 1000
-    return database[min_index][1], min_cost
+    return database[min_index][0], database[min_index][1], min_cost
