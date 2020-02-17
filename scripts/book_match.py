@@ -1,14 +1,25 @@
 # Temporary list until a database is set up
-label_codes = ["F\n128\n.65\n.C3\nCoo", "F\n229\nVau.", "F\n334\n.S4\nSwa.", "E\n441\nAsh.", "F\n1025\nNor.", "F\n394\n.H857\nCar."]
-label_codes = [code.replace('\n', '') for code in label_codes]
+# label_codes = ["F\n128\n.65\n.C3\nCoo", "F\n229\nVau.", "F\n334\n.S4\nSwa.", "E\n441\nAsh.", "F\n1025\nNor.", "F\n394\n.H857\nCar."]
+label_codes = ['DG311 Gib.', 'BJ1499.S5 Kag.', 'QC21.3 Hal.', 'QC174.12 Bra.', 'PS3562.E353 Lee.', 'PR4662 Eli.', 'HA29 Huf.', 'QA276 Whe.' ,'QA76.73.H37 Lip.', 'QA76.62 Bir.']
+# label_codes = [code.replace('\n', '') for code in label_codes]
 maxlength = max([len(code) for code in label_codes])
 label_codes = [code.ljust(maxlength, ".") for code in label_codes]
-book_names = ["A description of the New York Central Park",
-             "American genesis",
-             "The Selma Campaign",
-             "Slavery, Capitalism, and Politics",
-             "Northern Exposures",
-             "Red Scare"]
+# book_names = ["A description of the New York Central Park",
+#              "American genesis",
+#              "The Selma Campaign",
+#              "Slavery, Capitalism, and Politics",
+#              "Northern Exposures",
+#              "Red Scare"]
+book_names = ['The decline and fall of the Roman Empire', 
+            'Silence: in the age of noise',
+            'Principles of Physics',
+            'Quantum Mechanics',
+            'To kill a mockingbird',
+            'Middlemarch',
+            'How to lie with statistics',
+            'Naked statistics: stripping the dread from the data',
+            'Learn you a Haskell for great good!',
+            'Introduction to functional programming using Haskell']
 database = list(zip(label_codes, book_names))
 
 # Calculates the minimum edit distance between s1 and s2
@@ -37,7 +48,7 @@ def levenshtein(s1, s2):
 
     return previous_row[-1]
 
-# Returns the name of the book which is closest match to input read_label from the datbase
+# Returns the true label code, name of the book which is closest match to input read_label from the datbase and the cost
 def closest_label_match(read_label):
     min_cost = 1000
     min_index = -1
@@ -51,4 +62,4 @@ def closest_label_match(read_label):
     # Cutoff point 20, if higher cost empty name is returned
     if(min_cost>20):
         return "", 1000
-    return database[min_index][1], min_cost
+    return database[min_index][0], database[min_index][1], min_cost

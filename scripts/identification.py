@@ -3,10 +3,58 @@ import cv2 as cv
 import time
 import pytesseract
 from scipy.signal import find_peaks, peak_widths
-from book_match import closest_label_match
+from book_match import closest_label_match, book_names
+
+
+class Line:
+    """
+    Class to represent a line with equation ρ = xcosθ + ysinθ.
+    ρ is the perpendicular distance from origin to the line and θ is the
+    angle formed by this perpedicular line and the x-axis measured counter-clockwise
+    To represent it in the form ax + by + c = 0 we take a = cosθ, b = sinθ, c = -ρ
+    """
+    def __init__(self, theta, rho):
+        self.theta = theta
+        self.rho = rho
+        self.a = np.cos(theta)
+        self.b = np.sin(theta)
+        self.c = -rho
+
+    def distanceFromPoint(self, point):
+        """
+        Calculates the distance of a given point (x₀, y₀) from the line using the formula
+        distance = |ax₀ + by₀ + c| / √(a² + b²)
+        """
+        x0, y0 = point
+        return np.abs(self.a * x0 + self.b * y0 + self.c) / np.linalg.norm((self.a, self.b))
+
+    def plotOnImage(self, img, colour=(255, 0, 0), thickness=5):
+        """
+        Plots the line on the given image.
+        """
+        x0 = self.a * self.rho
+        y0 = self.b * self.rho
+        pt1 = (int(x0 + 1000 * (-self.b)), int(y0 + 1000 * (self.a)))
+        pt2 = (int(x0 - 1000 * (-self.b)), int(y0 - 1000 * (self.a)))
+        cv.line(img, pt1, pt2, colour, thickness, cv.LINE_AA)
+
+    def calculateXgivenY(self, y):
+        """
+        Calculates the x-coordinate of a point on the line with the given y-coordinate.
+        """
+        return -(self.b * y + self.c) / self.a
+
+    def calculateYgivenX(self, x):
+        """
+        Calculates the y-coordinate of a point on the line with the given x-coordinate.
+        """
+        return -(self.a * x + self.c) / self.b
 
 
 class Rectangle:
+    """
+    Class to represent a rectangle with sides parallel to the coordinate axes.
+    """
     def __init__(self, x, y, w, h):
         self.x = x  # x-coordinate of top left point
         self.y = y  # y-coordinate of top left point
@@ -31,15 +79,106 @@ class Rectangle:
                 return True
         return False
 
+    def plotOnImage(self, img, colour=(0, 255, 0), thickness=5):
+        """
+        Plots the rectangle on the given image
+        """
+        cv.rectangle(img, (self.x, self.y), (self.x + self.w, self.y + self.h), colour, thickness)
+
+
+class Book:
+    def __init__(self, label_rectangle, label_img):
+        self.label_rectangle = label_rectangle
+        self.label_img = label_img
+        self.label_img_preprocessed = None
+        self.label_ocr_text = None
+        self.matched_title = None
+        self.matched_lcc_code = None
+        self.match_cost = None
+        self.left_spine_bound = None
+        self.right_spine_bound = None
+
+    def parseBookLabel(self):
+        """
+        Does some preprocessing to the image of the label and uses OCR to read the text.
+        """
+        # Binarise the image
+        img = rowLuminosityBinarisation(self.label_img, num_intervals=1, threshold_coef=0.8).astype('uint8')
+
+        # Resize image
+        scale_percent = 200  # Percentage of original size
+        width = int(img.shape[1] * scale_percent / 100)
+        height = int(img.shape[0] * scale_percent / 100)
+        dim = (width, height)
+        img = cv.resize(img, dim, interpolation=cv.INTER_AREA)
+
+        # Add white border around the image
+        img = cv.copyMakeBorder(img, top=100, bottom=100, left=100, right=100, borderType=cv.BORDER_CONSTANT, value=255)
+
+        # Apply Gaussian blurring
+        img = cv.GaussianBlur(img, (5, 5), 1)
+
+        # Dilate the image
+        kernel = np.ones((5, 5), np.uint8)
+        img = cv.dilate(img, kernel, iterations=1)
+
+        self.label_img_preprocessed = img
+        self.label_ocr_text = pytesseract.image_to_string(self.label_img_preprocessed)  # , config='bazaar --oem 0'))
+
+    def findMatch(self):
+        """
+        Finds the closest match to the label, using levenshtein distance
+        """
+        if len(self.label_ocr_text) > 0:
+            self.matched_lcc_code, self.matched_title, self.match_cost = closest_label_match(self.label_ocr_text)
+
+    def findSpineBoundaries(self, lines):
+        """
+        Finds the left and right boundaries of the spine of this book
+        """
+        left_lines = []
+        right_lines = []
+        midpoint_y = self.label_rectangle.y + self.label_rectangle.h / 2
+        label_left_midpoint_x = self.label_rectangle.x
+        label_right_midpoint_x = self.label_rectangle.x + self.label_rectangle.w
+        for line in lines:
+            line_midpoint_x = line.calculateXgivenY(midpoint_y)
+            if line_midpoint_x < label_left_midpoint_x:
+                left_lines.append(line)
+            elif line_midpoint_x > label_right_midpoint_x:
+                right_lines.append(line)
+        self.left_spine_bound = findClosestLineToPoint((label_left_midpoint_x, midpoint_y), left_lines)
+        self.right_spine_bound = findClosestLineToPoint((label_right_midpoint_x, midpoint_y), right_lines)
+
+    def __str__(self):
+        if self.matched_title:
+            return self.label_ocr_text + \
+                '\nBest match:    ' + self.matched_title + \
+                '\nEdit distance: ' + str(self.match_cost)
+        elif self.label_ocr_text == '':
+            return 'EMPTY LABEL'
+        else:
+            return 'NO MATCH FOUND'
+
 
 class BooksImage:
     def __init__(self, filename):
         self.img_bgr = cv.imread(filename)
         self.img_rgb = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2RGB)
         self.img_gray = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2GRAY)
+
+        # For label detection
         self.img_binary = None
         self.img_eroded = None
-        self.label_codes = []
+
+        # For book boundary detection
+        self.img_downsampled = None
+        self.img_canny_edge = None
+        self.boundary_lines = []
+
+        self.books = []
+
+        # self.label_codes = []  # TODO REMOVE
         self.label_rectangles = []
         self.M, self.N = self.img_gray.shape  # M - rows, N - columns
         self.row_bounds = None
@@ -124,37 +263,34 @@ class BooksImage:
         for rectangle in self.label_rectangles:
             (x, y, w, h) = rectangle.unpack()
             img_slice = self.img_gray[y:y + h, x:x + w].copy()
-
-            # Binarise the image
-            img_slice = rowLuminosityBinarisation(img_slice, num_intervals=1, threshold_coef=0.8).astype('uint8')
-
-            # Resize image
-            scale_percent = 200  # Percentage of original size
-            width = int(img_slice.shape[1] * scale_percent / 100)
-            height = int(img_slice.shape[0] * scale_percent / 100)
-            dim = (width, height)
-            img_slice = cv.resize(img_slice, dim, interpolation=cv.INTER_AREA)
-
-            # Add white border around the image
-            img_slice = cv.copyMakeBorder(img_slice, top=100, bottom=100, left=100, right=100, borderType=cv.BORDER_CONSTANT, value=255)
-
-            img_slice = cv.GaussianBlur(img_slice, (5, 5), 1)
-
-            # Dilate the image
-            kernel = np.ones((5, 5), np.uint8)
-            img_slice = cv.dilate(img_slice, kernel, iterations=1)
-
-            cv.imwrite('label' + str(counter) + '.png', img_slice)
-
-            self.label_codes.append(pytesseract.image_to_string(img_slice))  # , config='bazaar --oem 0'))
+            book = Book(rectangle, img_slice)
+            book.parseBookLabel()
+            book.findMatch()
+            self.books.append(book)
+            # cv.imwrite('label' + str(counter) + '.png', book.label_img_preprocessed)
             counter += 1
+
+    def findBookBoundaries(self):
+        """
+        Finds all lines that could be book boundaries using Canny Edge Detection and Hough Line Transform
+        """
+        self.img_downsampled = cv.pyrDown(self.img_gray, self.img_downsampled)  # Downsample - scale factor 2
+        self.img_canny_edge = cv.Canny(self.img_downsampled, 50, 50)
+        hough_lines = cv.HoughLines(image=self.img_canny_edge, rho=1, theta=np.pi / 180, threshold=150)
+        for hough_line in hough_lines:
+            rho = hough_line[0][0]
+            theta = hough_line[0][1]
+            if (abs(theta) >= 0 and abs(theta) < np.pi / 20) or (abs(theta) >= (19 / 20) * np.pi and abs(theta) <= (21/20) * np.pi):
+                # Keep only lines that are vertical or almost vertical
+                # Rho is multiplied by 2 as the image used for detecting the lines is downsampled
+                self.boundary_lines.append(Line(theta, 2 * rho))
 
 
 def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     """
     Binarises an image by using binary thresholding. The threshold is
     calculated as the product of threshold_coef and the maximum row
-    luminosity. Luminosity of a row is the mean intensity of its pixels
+    luminosity. Luminosity of a row is the mean intensity of its pixels.
     """
     M, N = img.shape
     row_luminosities = []
@@ -166,30 +302,27 @@ def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     return 255 * (img > threshold)
 
 
-"""
-def displayImage(img, cmap='gray', rectangles=None):
-    # Displays an image within a matplotlib figure alongside any rectangles
-    # passed to this function.
-    plt.figure(figsize=(16, 12))
-    if rectangles:
-        for rectangle in rectangles:
-            (x, y, w, h) = rectangle.unpack()
-            cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
-    plt.imshow(cv.GaussianBlur(img, (5, 5), 1), cmap)
-    plt.show()
-"""
-
-
-def displayImage2(img, rectangles=None):
+def displayImage(img, rectangles=None, lines=None):
+    """
+    Displays image with lines and rectangles (if there are any)
+    """
     cv.namedWindow("Display window", cv.WINDOW_AUTOSIZE)
+    img_display = img.copy()
+
     if rectangles:
         for rectangle in rectangles:
-            (x, y, w, h) = rectangle.unpack()
-            cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
-    M, N = img.shape[0], img.shape[1]
-    img = cv.resize(img, (int(N / 4), int(M / 4)))
-    cv.imshow('Display window', img)
+            rectangle.plotOnImage(img_display)
+
+    if lines:
+        for line in lines:
+            line.plotOnImage(img_display)
+
+    M, N = img_display.shape[0], img_display.shape[1]
+    img = cv.resize(img_display, (int(N / 4), int(M / 4)))
+    img_display = cv.pyrDown(img_display, img_display)
+    cv.imshow('Display window', img_display)
     cv.waitKey(0)
+    return img_display
 
 
 def removeInnerRectangles(rectangles):
@@ -208,25 +341,59 @@ def movingAverage(values, window_size):
     return np.convolve(values, window, 'same')
 
 
+def findClosestLineToPoint(point, lines):
+    """
+    Finds the line closest to the point from a given list of lines
+    """
+    min_distance = lines[0].distanceFromPoint(point)
+    closest_line = lines[0]
+    for line in lines[1:]:
+        distance = line.distanceFromPoint(point)
+        if distance < min_distance:
+            min_distance = distance
+            closest_line = line
+    return closest_line
+
+
+def findBook(booksimg, target_title):
+    """
+    Finds the book with the given title in the image and displays its boundaries
+    """
+    target_book = None
+    min_cost = 100
+    for book in booksimg.books:
+        if book.matched_title == target_title and book.match_cost < min_cost:
+            min_cost = book.match_cost
+            target_book = book
+    if target_book:
+        print(str(target_title) + ' has been found!')
+        target_book.findSpineBoundaries(booksimg.boundary_lines)
+        img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle], lines=[target_book.left_spine_bound, target_book.right_spine_bound])
+        cv.imwrite(target_title + '.png', img_display)
+    else:
+        print(str(target_title) + ' could not be found :(')
+
+
 if __name__ == '__main__':
     start_time = time.time()
-    books = BooksImage('../notebooks/pictures/books13.png')
-    books.generateBinaryImage(num_intervals=20)
-    books.erodeBinaryImage()
-    books.findLabels()
-    books.parseLabels()
-    for label in books.label_codes:
-        if len(label) == 0:
-            print('=============')
-            print('EMPTY LABEL')
-        if len(label) != 0:
-            print('=============')
-            print(label)
-            match, cost = closest_label_match(label)
-            print('Best match:    ' + str(match))
-            print('Edit distance: ' + str(cost))
+    booksimg = BooksImage('../notebooks/pictures/books14_downsampled.png')
+    booksimg.generateBinaryImage(num_intervals=20)
+    booksimg.erodeBinaryImage()
+    booksimg.findLabels()
+    booksimg.parseLabels()
+    booksimg.findBookBoundaries()
+
+    for book in booksimg.books:
+        print('=============')
+        print(book)
     print('==========================')
     print('TOTAL RUNTIME: %s seconds' % (time.time() - start_time))
     print('==========================')
-    displayImage2(books.img_binary, rectangles=books.label_rectangles)
-    displayImage2(books.img_bgr, rectangles=books.label_rectangles)
+
+    displayImage(booksimg.img_binary, rectangles=booksimg.label_rectangles)
+    displayImage(booksimg.img_bgr, rectangles=booksimg.label_rectangles, lines=booksimg.boundary_lines)
+
+    print('\n==========================\n')
+    for book_title in book_names:
+        findBook(booksimg, book_title)
+        print('==========================')
