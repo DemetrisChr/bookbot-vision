@@ -93,7 +93,7 @@ class Book:
         self.label_img_preprocessed = None
         self.label_ocr_text = None
         self.matched_title = None
-        self.matched_lcc_code = None  # Unused for now - TODO: Edit book_match.py to return it
+        self.matched_lcc_code = None
         self.match_cost = None
         self.left_spine_bound = None
         self.right_spine_bound = None
@@ -130,7 +130,7 @@ class Book:
         Finds the closest match to the label, using levenshtein distance
         """
         if len(self.label_ocr_text) > 0:
-            self.matched_title, self.match_cost = closest_label_match(self.label_ocr_text)
+            self.matched_lcc_code, self.matched_title, self.match_cost = closest_label_match(self.label_ocr_text)
 
     def findSpineBoundaries(self, lines):
         """
@@ -140,7 +140,7 @@ class Book:
         right_lines = []
         midpoint_y = self.label_rectangle.y + self.label_rectangle.h / 2
         label_left_midpoint_x = self.label_rectangle.x
-        label_right_midpoint_x = self.label_rectangle.x + self.label_rectangle.w / 2
+        label_right_midpoint_x = self.label_rectangle.x + self.label_rectangle.w
         for line in lines:
             line_midpoint_x = line.calculateXgivenY(midpoint_y)
             if line_midpoint_x < label_left_midpoint_x:
@@ -280,7 +280,7 @@ class BooksImage:
         for hough_line in hough_lines:
             rho = hough_line[0][0]
             theta = hough_line[0][1]
-            if (abs(theta) < 0.5) or (abs(theta) > 3):
+            if (abs(theta) >= 0 and abs(theta) < np.pi / 20) or (abs(theta) >= (19 / 20) * np.pi and abs(theta) <= (21/20) * np.pi):
                 # Keep only lines that are vertical or almost vertical
                 # Rho is multiplied by 2 as the image used for detecting the lines is downsampled
                 self.boundary_lines.append(Line(theta, 2 * rho))
@@ -319,6 +319,7 @@ def displayImage(img, rectangles=None, lines=None):
 
     M, N = img_display.shape[0], img_display.shape[1]
     img = cv.resize(img_display, (int(N / 4), int(M / 4)))
+    img_display = cv.pyrDown(img_display, img_display)
     cv.imshow('Display window', img_display)
     cv.waitKey(0)
     return img_display
@@ -375,7 +376,7 @@ def findBook(booksimg, target_title):
 
 if __name__ == '__main__':
     start_time = time.time()
-    booksimg = BooksImage('../notebooks/pictures/books13.png')
+    booksimg = BooksImage('../notebooks/pictures/books14_downsampled.png')
     booksimg.generateBinaryImage(num_intervals=20)
     booksimg.erodeBinaryImage()
     booksimg.findLabels()
