@@ -8,7 +8,7 @@ import imutils
 import time
 import cv2
 from findSpine import findSpineBoundaries
-from utils import Rectangle, Line
+from utils import Rectangle
 
 class LabelTracker:
     def __init__(self, camera_index, trackerType, webCam, video):
