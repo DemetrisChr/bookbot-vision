@@ -10,13 +10,15 @@ import cv2
 from findSpine import findSpineBoundaries
 from utils import Rectangle
 
+
 class LabelTracker:
     def __init__(self, camera_index, trackerType, webCam, video):
         self.tracker = None
-        # initialize the bounding box coordinates of the object we are going
-        # to track
+
+        # initialize the bounding box coordinates of the object we are going to track
         self.initBB = None
         self.vs = None
+
         # initialize the FPS throughput estimator
         self.fps = None
         self.trackerType = args["tracker"]
@@ -30,7 +32,6 @@ class LabelTracker:
         """
         self.setUp()
         return self.track(label)
-
 
     def setUp(self):
         """
@@ -59,7 +60,6 @@ class LabelTracker:
             # grab the appropriate object tracker using our dictionary of
             # OpenCV object tracker objects
             self.tracker = OPENCV_OBJECT_TRACKERS[self.trackerType]()
-
 
         # if a video path was not supplied, grab the reference to the web cam
         if not self.webCam:
@@ -108,20 +108,19 @@ class LabelTracker:
                     (x, y, w, h) = [int(v) for v in box]
 
                     # Get the spine boundary lines
-                    label_ractangle = Rectangle(x,y,w,h)
+                    label_ractangle = Rectangle(x, y, w, h)
                     left_spine_bound, right_spine_bound = findSpineBoundaries(frame, label_ractangle)
 
-                    #Plot the lines
+                    # Plot the lines
                     if left_spine_bound:
                         left_spine_bound.plotOnImage(frame, thickness=2)
                     if right_spine_bound:
                         right_spine_bound.plotOnImage(frame, thickness=2)
 
-                    #TODO: Call adjust robot with left_spine_bound and right_spine_bound to center the book in the frame
+                    # TODO: Call adjust robot with left_spine_bound and right_spine_bound to center the book in the frame
 
                     # Draw the rectangle around the label
-                    cv2.rectangle(frame, (x, y), (x + w, y + h),
-                        (0, 255, 0), 2)
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 else:
                     return success
 
@@ -139,8 +138,7 @@ class LabelTracker:
                 # loop over the info tuples and draw them on our frame
                 for (i, (k, v)) in enumerate(info):
                     text = "{}: {}".format(k, v)
-                    cv2.putText(frame, text, (10, H - ((i * 20) + 20)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                    cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
             # show the output frame
             cv2.imshow("Frame", frame)
@@ -151,14 +149,13 @@ class LabelTracker:
                 # select the bounding box of the object we want to track (make
                 # sure you press ENTER or SPACE after selecting the ROI)
                 cv2.imwrite("frame.jpg", frame)
-                self.initBB = cv2.selectROI("Frame", frame, fromCenter=False,
-                    showCrosshair=True)
+                self.initBB = cv2.selectROI("Frame", frame, fromCenter=False, showCrosshair=True)
                 # start OpenCV object tracker using the supplied bounding box
                 # coordinates, then start the FPS throughput estimator as well
                 self.tracker.init(frame, self.initBB)
                 self.fps = FPS().start()
 
-                    # if the `q` key was pressed, break from the loop
+            # if the `q` key was pressed, break from the loop
             elif key == ord("q"):
                 break
         # if we are using a webcam, release the pointer
@@ -169,6 +166,7 @@ class LabelTracker:
             self.vs.release()
         # close all windows
         cv2.destroyAllWindows()
+
 
 def controller_center_book(label_rectangle, camera_index):
     """
@@ -183,10 +181,8 @@ def controller_center_book(label_rectangle, camera_index):
 if __name__ == '__main__':
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
-    ap.add_argument("-v", "--video", type=str,
-        help="path to input video file")
-    ap.add_argument("-t", "--tracker", type=str, default="kcf",
-        help="OpenCV object tracker type")
+    ap.add_argument("-v", "--video", type=str, help="path to input video file")
+    ap.add_argument("-t", "--tracker", type=str, default="kcf", help="OpenCV object tracker type")
     args = vars(ap.parse_args())
 
     trackerType = args["tracker"]
