@@ -14,7 +14,7 @@ def findBookBoundaries(image):
 
     hough_lines = cv.HoughLines(image=img_canny_edge, rho=1, theta=np.pi / 180, threshold=50)
 
-    if not hough_lines:
+    if hough_lines is None:
         return []
 
     boundary_lines = []
