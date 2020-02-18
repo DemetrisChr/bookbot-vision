@@ -1,3 +1,5 @@
+# Based on code from https://www.pyimagesearch.com/2018/07/30/opencv-object-tracking/
+
 # import the necessary packages
 from imutils.video import VideoStream
 from imutils.video import FPS
