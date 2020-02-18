@@ -8,7 +8,7 @@ import imutils
 import time
 import cv2
 from findSpine import findSpineBoundaries
-from utils import Rectangle, Line
+from utils import Rectangle
 
 class LabelTracker:
     def __init__(self, camera_index, trackerType, webCam, video):
@@ -25,12 +25,17 @@ class LabelTracker:
         self.camera_index = camera_index
 
     def trackLabel(self, label):
+        """
+        Sets up and tracks a given label
+        """
         self.setUp()
-        self.track(label)
-
+        return self.track(label)
 
 
     def setUp(self):
+        """
+        Set up everything for the video stream and tracking
+        """
         # extract the OpenCV version info
         (major, minor) = cv2.__version__.split(".")[:2]
         # if we are using OpenCV 3.2 OR BEFORE, we can use a special factory
@@ -66,6 +71,11 @@ class LabelTracker:
             self.vs = cv2.VideoCapture(self.video)
 
     def track(self, label):
+        """
+        Takes a label and tracks it in a video or webcam stram.
+        Displays the video with the tracked objects.
+        Returns false if the label is lost
+        """
         # loop over frames from the video stream
         while True:
             # grab the current frame, then handle if we are using a
