@@ -8,10 +8,10 @@ from book_match import closest_label_match, book_names
 
 class Line:
     """
-    Class to represent a line with equation ρ = xcosθ + ysinθ.
-    ρ is the perpendicular distance from origin to the line and θ is the
+    Class to represent a line with equation rho = xcos theta + ysin theta.
+    rho is the perpendicular distance from origin to the line and theta is the
     angle formed by this perpedicular line and the x-axis measured counter-clockwise
-    To represent it in the form ax + by + c = 0 we take a = cosθ, b = sinθ, c = -ρ
+    To represent it in the form ax + by + c =  we take a = cos theta, b = sin theta, c = -rho
     """
     def __init__(self, theta, rho):
         self.theta = theta
@@ -22,8 +22,8 @@ class Line:
 
     def distanceFromPoint(self, point):
         """
-        Calculates the distance of a given point (x₀, y₀) from the line using the formula
-        distance = |ax₀ + by₀ + c| / √(a² + b²)
+        Calculates the distance of a given point (x, y) from the line using the formula
+        distance = |ax + by + c| / (a^2 + b^2)
         """
         x0, y0 = point
         return np.abs(self.a * x0 + self.b * y0 + self.c) / np.linalg.norm((self.a, self.b))
@@ -163,7 +163,10 @@ class Book:
 
 class BooksImage:
     def __init__(self, filename):
-        self.img_bgr = cv.imread(filename)
+        if isinstance(filename, str):
+            self.img_bgr = cv.imread(filename)
+        else:
+            self.img_bgr = filename
         self.img_rgb = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2RGB)
         self.img_gray = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2GRAY)
 
@@ -209,6 +212,7 @@ class BooksImage:
         kernel = np.ones(kernel_shape, np.uint8)
         self.img_binary = self.img_binary.copy()
         self.img_eroded = cv.erode(self.img_binary, kernel, iterations)
+        return self.img_eroded
 
     def findRowBounds(self):
         """
