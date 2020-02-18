@@ -101,15 +101,19 @@ class LabelTracker:
                     label_ractangle = Rectangle(x,y,w,h)
                     left_spine_bound, right_spine_bound = findSpineBoundaries(frame, label_ractangle)
 
-                    #TODO: Call adjust robot with left_spine_bound and right_spine_bound to center the book in the frame
+                    #Plot the lines
+                    if left_spine_bound:
+                        left_spine_bound.plotOnImage(frame, thickness=2)
+                    if right_spine_bound:
+                        right_spine_bound.plotOnImage(frame, thickness=2)
 
-                    # Plot the lines
-                    left_spine_bound.plotOnImage(frame, thickness=2)
-                    right_spine_bound.plotOnImage(frame, thickness=2)
+                    #TODO: Call adjust robot with left_spine_bound and right_spine_bound to center the book in the frame
 
                     # Draw the rectangle around the label
                     cv2.rectangle(frame, (x, y), (x + w, y + h),
                         (0, 255, 0), 2)
+                else:
+                    return success
 
                 # update the FPS counter
                 self.fps.update()
@@ -160,10 +164,10 @@ def controller_center_book(label_rectangle, camera_index):
     """
     Takes the rectangle around the label and
     will adjust the robots position until the book is in the center of the frame
-    Returns the success of tracking the label
+    Returns False if the label is no longer trackable
     """
     lt = LabelTracker(camera_index, "kcf", True, None)
-    lt.trackLabel(label)
+    return lt.trackLabel(label)
 
 
 if __name__ == '__main__':

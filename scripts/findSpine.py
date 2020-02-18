@@ -14,7 +14,7 @@ def findBookBoundaries(image):
 
     hough_lines = cv.HoughLines(image=img_canny_edge, rho=1, theta=np.pi / 180, threshold=50)
 
-    if not hough_lines:
+    if hough_lines is None:
         return []
 
     boundary_lines = []
@@ -36,6 +36,8 @@ def findSpineBoundaries(image, label_rectangle):
     right_lines = []
 
     lines = findBookBoundaries(image)
+    if len(lines) == 0:
+        return False, False
 
     # Define point on the boundaries of the label
     midpoint_y = label_rectangle.y + label_rectangle.h / 2
