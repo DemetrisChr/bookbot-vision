@@ -1,4 +1,4 @@
-from identification import Line, findClosestLineToPoint
+from utils import Line, findClosestLineToPoint
 import cv2 as cv
 import numpy as np
 
