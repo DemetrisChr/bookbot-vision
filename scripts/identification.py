@@ -2,88 +2,9 @@ import numpy as np
 import cv2 as cv
 import time
 import pytesseract
+from utils import Rectangle, displayImage, movingAverage
 from scipy.signal import find_peaks, peak_widths
 from book_match import closest_label_match, book_names
-
-
-class Line:
-    """
-    Class to represent a line with equation rho = xcos theta + ysin theta.
-    rho is the perpendicular distance from origin to the line and theta is the
-    angle formed by this perpedicular line and the x-axis measured counter-clockwise
-    To represent it in the form ax + by + c =  we take a = cos theta, b = sin theta, c = -rho
-    """
-    def __init__(self, theta, rho):
-        self.theta = theta
-        self.rho = rho
-        self.a = np.cos(theta)
-        self.b = np.sin(theta)
-        self.c = -rho
-
-    def distanceFromPoint(self, point):
-        """
-        Calculates the distance of a given point (x, y) from the line using the formula
-        distance = |ax + by + c| / (a^2 + b^2)
-        """
-        x0, y0 = point
-        return np.abs(self.a * x0 + self.b * y0 + self.c) / np.linalg.norm((self.a, self.b))
-
-    def plotOnImage(self, img, colour=(255, 0, 0), thickness=5):
-        """
-        Plots the line on the given image.
-        """
-        x0 = self.a * self.rho
-        y0 = self.b * self.rho
-        pt1 = (int(x0 + 1000 * (-self.b)), int(y0 + 1000 * (self.a)))
-        pt2 = (int(x0 - 1000 * (-self.b)), int(y0 - 1000 * (self.a)))
-        cv.line(img, pt1, pt2, colour, thickness, cv.LINE_AA)
-
-    def calculateXgivenY(self, y):
-        """
-        Calculates the x-coordinate of a point on the line with the given y-coordinate.
-        """
-        return -(self.b * y + self.c) / self.a
-
-    def calculateYgivenX(self, x):
-        """
-        Calculates the y-coordinate of a point on the line with the given x-coordinate.
-        """
-        return -(self.a * x + self.c) / self.b
-
-
-class Rectangle:
-    """
-    Class to represent a rectangle with sides parallel to the coordinate axes.
-    """
-    def __init__(self, x, y, w, h):
-        self.x = x  # x-coordinate of top left point
-        self.y = y  # y-coordinate of top left point
-        self.w = w  # width
-        self.h = h  # height
-
-    def unpack(self):
-        """
-        Returns the attributes of a rectange as a tuple
-        """
-        return (self.x, self.y, self.w, self.h)
-
-    def isInnerRectangle(self, rectangles):
-        """
-        Returns whether this rectangle is within any of the rectangles passed
-        as arguments
-        """
-        for rectangle in rectangles:
-            (x, y, w, h) = rectangle.unpack()
-            if x < self.x and (self.x + self.w) < (x + w) and \
-                    y < self.y and (self.y + self.h) < (y + h):
-                return True
-        return False
-
-    def plotOnImage(self, img, colour=(0, 255, 0), thickness=5):
-        """
-        Plots the rectangle on the given image
-        """
-        cv.rectangle(img, (self.x, self.y), (self.x + self.w, self.y + self.h), colour, thickness)
 
 
 class Book:
@@ -95,8 +16,6 @@ class Book:
         self.matched_title = None
         self.matched_lcc_code = None
         self.match_cost = None
-        self.left_spine_bound = None
-        self.right_spine_bound = None
 
     def parseBookLabel(self):
         """
@@ -132,24 +51,6 @@ class Book:
         if len(self.label_ocr_text) > 0:
             self.matched_lcc_code, self.matched_title, self.match_cost = closest_label_match(self.label_ocr_text)
 
-    def findSpineBoundaries(self, lines):
-        """
-        Finds the left and right boundaries of the spine of this book
-        """
-        left_lines = []
-        right_lines = []
-        midpoint_y = self.label_rectangle.y + self.label_rectangle.h / 2
-        label_left_midpoint_x = self.label_rectangle.x
-        label_right_midpoint_x = self.label_rectangle.x + self.label_rectangle.w
-        for line in lines:
-            line_midpoint_x = line.calculateXgivenY(midpoint_y)
-            if line_midpoint_x < label_left_midpoint_x:
-                left_lines.append(line)
-            elif line_midpoint_x > label_right_midpoint_x:
-                right_lines.append(line)
-        self.left_spine_bound = findClosestLineToPoint((label_left_midpoint_x, midpoint_y), left_lines)
-        self.right_spine_bound = findClosestLineToPoint((label_right_midpoint_x, midpoint_y), right_lines)
-
     def __str__(self):
         if self.matched_title:
             return self.label_ocr_text + \
@@ -174,14 +75,8 @@ class BooksImage:
         self.img_binary = None
         self.img_eroded = None
 
-        # For book boundary detection
-        self.img_downsampled = None
-        self.img_canny_edge = None
-        self.boundary_lines = []
-
         self.books = []
 
-        # self.label_codes = []  # TODO REMOVE
         self.label_rectangles = []
         self.M, self.N = self.img_gray.shape  # M - rows, N - columns
         self.row_bounds = None
@@ -274,21 +169,6 @@ class BooksImage:
             # cv.imwrite('label' + str(counter) + '.png', book.label_img_preprocessed)
             counter += 1
 
-    def findBookBoundaries(self):
-        """
-        Finds all lines that could be book boundaries using Canny Edge Detection and Hough Line Transform
-        """
-        self.img_downsampled = cv.pyrDown(self.img_gray, self.img_downsampled)  # Downsample - scale factor 2
-        self.img_canny_edge = cv.Canny(self.img_downsampled, 50, 50)
-        hough_lines = cv.HoughLines(image=self.img_canny_edge, rho=1, theta=np.pi / 180, threshold=150)
-        for hough_line in hough_lines:
-            rho = hough_line[0][0]
-            theta = hough_line[0][1]
-            if (abs(theta) >= 0 and abs(theta) < np.pi / 20) or (abs(theta) >= (19 / 20) * np.pi and abs(theta) <= (21/20) * np.pi):
-                # Keep only lines that are vertical or almost vertical
-                # Rho is multiplied by 2 as the image used for detecting the lines is downsampled
-                self.boundary_lines.append(Line(theta, 2 * rho))
-
 
 def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     """
@@ -306,59 +186,6 @@ def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     return 255 * (img > threshold)
 
 
-def displayImage(img, rectangles=None, lines=None):
-    """
-    Displays image with lines and rectangles (if there are any)
-    """
-    cv.namedWindow("Display window", cv.WINDOW_AUTOSIZE)
-    img_display = img.copy()
-
-    if rectangles:
-        for rectangle in rectangles:
-            rectangle.plotOnImage(img_display)
-
-    if lines:
-        for line in lines:
-            line.plotOnImage(img_display)
-
-    M, N = img_display.shape[0], img_display.shape[1]
-    img = cv.resize(img_display, (int(N / 4), int(M / 4)))
-    img_display = cv.pyrDown(img_display, img_display)
-    cv.imshow('Display window', img_display)
-    cv.waitKey(0)
-    return img_display
-
-
-def removeInnerRectangles(rectangles):
-    """
-    Removes all inner rectangles from a list of rectangles. A rectangle is
-    considered inner if it is within any other rectangle from the list.
-    """
-    return list(filter(lambda rec: not rec.isInnerRectangle(rectangles), rectangles))
-
-
-def movingAverage(values, window_size):
-    """
-    Calculates the moving average of a given list of values
-    """
-    window = np.ones(int(window_size)) / float(window_size)
-    return np.convolve(values, window, 'same')
-
-
-def findClosestLineToPoint(point, lines):
-    """
-    Finds the line closest to the point from a given list of lines
-    """
-    min_distance = lines[0].distanceFromPoint(point)
-    closest_line = lines[0]
-    for line in lines[1:]:
-        distance = line.distanceFromPoint(point)
-        if distance < min_distance:
-            min_distance = distance
-            closest_line = line
-    return closest_line
-
-
 def findBook(booksimg, target_title):
     """
     Finds the book with the given title in the image and displays its boundaries
@@ -371,8 +198,7 @@ def findBook(booksimg, target_title):
             target_book = book
     if target_book:
         print(str(target_title) + ' has been found!')
-        target_book.findSpineBoundaries(booksimg.boundary_lines)
-        img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle], lines=[target_book.left_spine_bound, target_book.right_spine_bound])
+        img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle])
         cv.imwrite(target_title + '.png', img_display)
     else:
         print(str(target_title) + ' could not be found :(')
@@ -385,7 +211,6 @@ if __name__ == '__main__':
     booksimg.erodeBinaryImage()
     booksimg.findLabels()
     booksimg.parseLabels()
-    booksimg.findBookBoundaries()
 
     for book in booksimg.books:
         print('=============')
@@ -395,7 +220,7 @@ if __name__ == '__main__':
     print('==========================')
 
     displayImage(booksimg.img_binary, rectangles=booksimg.label_rectangles)
-    displayImage(booksimg.img_bgr, rectangles=booksimg.label_rectangles, lines=booksimg.boundary_lines)
+    displayImage(booksimg.img_bgr, rectangles=booksimg.label_rectangles)
 
     print('\n==========================\n')
     for book_title in book_names:
