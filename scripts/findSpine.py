@@ -36,6 +36,8 @@ def findSpineBoundaries(image, label_rectangle):
     right_lines = []
 
     lines = findBookBoundaries(image)
+    if len(lines) == 0:
+        return False, False
 
     # Define point on the boundaries of the label
     midpoint_y = label_rectangle.y + label_rectangle.h / 2
