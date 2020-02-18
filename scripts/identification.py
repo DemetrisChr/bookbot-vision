@@ -95,7 +95,7 @@ class BooksImage:
             start = int(interval_idx * interval_width)
             end = int((interval_idx + 1) * interval_width)
             self.img_binary[:, start:end] = rowLuminosityBinarisation(self.img_binary[:, start:end], num_intervals, threshold_coef)
-        cv.imwrite('test.png', self.img_binary)
+        # cv.imwrite('test.png', self.img_binary)
 
     def erodeBinaryImage(self, kernel_shape=(5, 5), iterations=1):
         """
@@ -198,8 +198,8 @@ def findBook(booksimg, target_title):
             target_book = book
     if target_book:
         print(str(target_title) + ' has been found!')
-        img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle])
-        cv.imwrite(target_title + '.png', img_display)
+        # img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle])
+        # cv.imwrite(target_title + '.png', img_display)
     else:
         print(str(target_title) + ' could not be found :(')
 

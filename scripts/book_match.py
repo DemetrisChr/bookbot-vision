@@ -59,7 +59,6 @@ def closest_label_match(read_label):
         if(MED < min_cost):
             min_cost = MED
             min_index = i
-    print(min_cost)
 
     # Cutoff point 20, if higher cost empty name is returned
     if(min_cost > 20):
