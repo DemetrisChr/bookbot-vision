@@ -206,7 +206,7 @@ def findBook(booksimg, target_title):
 
 if __name__ == '__main__':
     start_time = time.time()
-    booksimg = BooksImage('../notebooks/pictures/books14_downsampled.png')
+    booksimg = BooksImage('../pictures/books14_downsampled.png')
     booksimg.generateBinaryImage(num_intervals=20)
     booksimg.erodeBinaryImage()
     booksimg.findLabels()
