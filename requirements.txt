@@ -1,6 +1,5 @@
 numpy
 matplotlib
-opencv-python
 imutils
 scipy
 pytesseract
