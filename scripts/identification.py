@@ -63,12 +63,12 @@ class Book:
 
 
 class BooksImage:
-    def __init__(self, filename=None, webcam_idx=0):
+    def __init__(self, filename=None, camera_idx=0):
         self.img_bgr = None
         if filename is None:
-            # Take picture from webcam
-            print('Taking picture from webcam...')
-            video_capture = cv.VideoCapture(index=webcam_idx)
+            # Take picture from camera
+            print('Taking picture from camera...')
+            video_capture = cv.VideoCapture(index=camera_idx)
             if not video_capture.isOpened():
                 raise Exception('Could not open video device')
             ret, self.img_bgr = video_capture.read()  # Read picture
