@@ -84,7 +84,7 @@ class LabelTracker:
             # grab the current frame, then handle if we are using a
             # VideoStream or VideoCapture object
             frame = self.vs.read()
-            #frame = frame[1] if self.webCam else frame
+            frame = frame[1] if not self.webCam else frame
             # check to see if we have reached the end of the stream
             if frame is None:
                 break
