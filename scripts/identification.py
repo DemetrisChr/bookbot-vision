@@ -198,10 +198,12 @@ def findBook(booksimg, target_title):
             target_book = book
     if target_book:
         print(str(target_title) + ' has been found!')
+        print('    Book label location:' + str(target_book.label_rectangle.unpack()))
         # img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle])
         # cv.imwrite(target_title + '.png', img_display)
     else:
         print(str(target_title) + ' could not be found :(')
+    return target_book.label_rectangle
 
 
 if __name__ == '__main__':
