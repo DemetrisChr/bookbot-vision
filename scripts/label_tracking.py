@@ -21,9 +21,9 @@ class LabelTracker:
 
         # initialize the FPS throughput estimator
         self.fps = None
-        self.trackerType = args["tracker"]
-        self.webCam = args.get("video", False)
-        self.video = args["video"]
+        self.trackerType = trackerType
+        self.webCam = webCam
+        self.video = video
         self.camera_index = camera_index
 
     def trackLabel(self, label):
@@ -61,14 +61,17 @@ class LabelTracker:
             # OpenCV object tracker objects
             self.tracker = OPENCV_OBJECT_TRACKERS[self.trackerType]()
 
-        # if a video path was not supplied, grab the reference to the web cam
-        if not self.webCam:
+        # If using the webcam, grab the reference to the web cam
+        if self.webCam:
             print("[INFO] starting video stream...")
             self.vs = VideoStream(src=self.camera_index).start()
             time.sleep(1.0)
         # otherwise, grab a reference to the video file
         else:
             self.vs = cv2.VideoCapture(self.video)
+
+        # Open the window
+        cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE);
 
     def track(self, label):
         """
@@ -81,7 +84,7 @@ class LabelTracker:
             # grab the current frame, then handle if we are using a
             # VideoStream or VideoCapture object
             frame = self.vs.read()
-            frame = frame[1] if self.webCam else frame
+            #frame = frame[1] if self.webCam else frame
             # check to see if we have reached the end of the stream
             if frame is None:
                 break
@@ -121,8 +124,8 @@ class LabelTracker:
 
                     # Draw the rectangle around the label
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                else:
-                    return success
+                #else:
+                    #return success
 
                 # update the FPS counter
                 self.fps.update()
@@ -159,7 +162,7 @@ class LabelTracker:
             elif key == ord("q"):
                 break
         # if we are using a webcam, release the pointer
-        if not self.webCam:
+        if self.webCam:
             self.vs.stop()
         # otherwise, release the file pointer
         else:
@@ -168,13 +171,14 @@ class LabelTracker:
         cv2.destroyAllWindows()
 
 
-def controller_center_book(label_rectangle, camera_index):
+def center_spine(label_rectangle, camera_index):
     """
     Takes the rectangle around the label and
     will adjust the robots position until the book is in the center of the frame
     Returns False if the label is no longer trackable
     """
     lt = LabelTracker(camera_index, "kcf", True, None)
+    label = label_rectangle.unpack()
     return lt.trackLabel(label)
 
 
@@ -186,7 +190,7 @@ if __name__ == '__main__':
     args = vars(ap.parse_args())
 
     trackerType = args["tracker"]
-    webCam = args.get("video", False)
+    webCam = not(args.get("video", False))
     video = args["video"]
 
     # (x, y, width, height)
