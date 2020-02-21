@@ -125,6 +125,8 @@ def findClosestLineToPoint(point, lines):
     """
     Finds the line closest to the point from a given list of lines
     """
+    if len(lines) == 0:
+        return None
     min_distance = lines[0].distanceFromPoint(point)
     closest_line = lines[0]
     for line in lines[1:]:
