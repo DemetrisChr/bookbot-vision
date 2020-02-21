@@ -50,6 +50,9 @@ else:
 # initialize the FPS throughput estimator
 fps = None
 
+# Open the window
+cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE);
+
 
 # loop over frames from the video stream
 while True:
