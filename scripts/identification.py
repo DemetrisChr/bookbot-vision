@@ -4,7 +4,7 @@ import time
 import pytesseract
 from utils import Rectangle, displayImage, movingAverage
 from scipy.signal import find_peaks, peak_widths
-from book_match import closest_label_match, label_codes
+from book_match import closest_label_match, label_codes_original
 
 
 class Book:
@@ -211,8 +211,8 @@ def findBook(booksimg, target_lcc_code):
     target_book = None
     min_cost = 100
     for book in booksimg.books:
-        print('tagrget=' + target_lcc_code)
-        print('match=  ' + str(book.matched_lcc_code))
+        # print('tagrget=' + target_lcc_code)
+        # print('match=  ' + str(book.matched_lcc_code))
         if book.matched_lcc_code == target_lcc_code and book.match_cost < min_cost:
             min_cost = book.match_cost
             target_book = book
@@ -227,9 +227,9 @@ def findBook(booksimg, target_lcc_code):
         return None
 
 
-if __name__ == '__main__':
+def main():
     start_time = time.time()
-    booksimg = BooksImage(camera_idx=1)  # '../pictures/books14_downsampled.png')
+    booksimg = BooksImage('../pictures/webcam.jpg')
     booksimg.preprocessAndReadLabels()
 
     for book in booksimg.books:
@@ -243,6 +243,11 @@ if __name__ == '__main__':
     displayImage(booksimg.img_bgr, rectangles=booksimg.label_rectangles)
 
     print('\n==========================\n')
-    for book_code in label_codes:
+    for book_code in label_codes_original:
         findBook(booksimg, book_code)
         print('==========================')
+    return booksimg
+
+
+if __name__ == '__main__':
+    main()
