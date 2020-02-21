@@ -12,7 +12,7 @@ def findBookBoundaries(image):
     img_downsampled = cv.pyrDown(img_grey, img_downsampled)  # Downsample - scale factor 2
     img_canny_edge = cv.Canny(img_downsampled, 50, 50)
 
-    hough_lines = cv.HoughLines(image=img_canny_edge, rho=1, theta=np.pi / 180, threshold=50)
+    hough_lines = cv.HoughLines(image=img_canny_edge, rho=1, theta=np.pi / 180, threshold=100)
 
     if hough_lines is None:
         return []

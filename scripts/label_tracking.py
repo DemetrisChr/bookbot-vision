@@ -4,7 +4,6 @@
 from imutils.video import VideoStream
 from imutils.video import FPS
 import argparse
-import imutils
 import time
 import cv2
 from findSpine import findSpineBoundaries
@@ -71,7 +70,7 @@ class LabelTracker:
             self.vs = cv2.VideoCapture(self.video)
 
         # Open the window
-        cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE);
+        cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE)
 
     def track(self, label):
         """
@@ -84,13 +83,13 @@ class LabelTracker:
             # grab the current frame, then handle if we are using a
             # VideoStream or VideoCapture object
             frame = self.vs.read()
-            #frame = frame[1] if self.webCam else frame
+            # frame = frame[1] if self.webCam else frame
             # check to see if we have reached the end of the stream
             if frame is None:
                 break
             # resize the frame (so we can process it faster) and grab the
             # frame dimensions
-            frame = imutils.resize(frame, width=500)
+            # frame = imutils.resize(frame, width=500)
             (H, W) = frame.shape[:2]
 
             # Start tracking the given label
@@ -177,7 +176,7 @@ def center_spine(label_rectangle, camera_index):
     will adjust the robots position until the book is in the center of the frame
     Returns False if the label is no longer trackable
     """
-    lt = LabelTracker(camera_index, "kcf", True, None)
+    lt = LabelTracker(camera_index, "csrt", True, None)
     label = label_rectangle.unpack()
     return lt.trackLabel(label)
 

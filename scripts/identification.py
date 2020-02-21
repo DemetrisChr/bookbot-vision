@@ -124,12 +124,13 @@ class BooksImage:
         """
         Finds the rows where the labels could be located
         """
+        # TODO Ignore internal row bounds
         count_row = np.sum(self.img_eroded, axis=1) / 255  # Number of white pixels in each row
         moving_average_row = movingAverage(count_row, 300)  # Moving average of white pixels for each row
 
-        min_height = int(self.N / 5)  # Minimum number of white pixels for row to be considered for local max
+        min_height = int(self.N / 10)  # Minimum number of white pixels for row to be considered for local max
         peaks, _ = find_peaks(moving_average_row, height=min_height)  # Finds the local maxima
-        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.8)
+        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.7)
         self.row_bounds = list(zip(top.astype('int'), bottom.astype('int')))
         print(self.row_bounds)
 
@@ -210,10 +211,12 @@ def findBook(booksimg, target_lcc_code):
     target_book = None
     min_cost = 100
     for book in booksimg.books:
+        print('tagrget=' + target_lcc_code)
+        print('match=  ' + str(book.matched_lcc_code))
         if book.matched_lcc_code == target_lcc_code and book.match_cost < min_cost:
             min_cost = book.match_cost
             target_book = book
-    if target_book:
+    if target_book is not None:
         print(str(target_book.matched_title) + ' has been found!')
         print('    Book label location: ' + str(target_book.label_rectangle.unpack()))
         return target_book.label_rectangle
@@ -226,7 +229,7 @@ def findBook(booksimg, target_lcc_code):
 
 if __name__ == '__main__':
     start_time = time.time()
-    booksimg = BooksImage('../pictures/books14_downsampled.png')
+    booksimg = BooksImage(camera_idx=1)  # '../pictures/books14_downsampled.png')
     booksimg.preprocessAndReadLabels()
 
     for book in booksimg.books:
