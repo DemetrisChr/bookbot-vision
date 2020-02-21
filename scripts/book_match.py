@@ -1,6 +1,6 @@
 # Temporary list until a database is set up
 
-label_codes = ['DG311 Gib.', 'BJ1499.S5 Kag.', 'QC21.3 Hal.', 'QC174.12 Bra.', 'PS3562.E353 Lee.',
+label_codes_original = ['DG311 Gib.', 'BJ1499.S5 Kag.', 'QC21.3 Hal.', 'QC174.12 Bra.', 'PS3562.E353 Lee.',
                'PR4662 Eli.', 'HA29 Huf.', 'QA276 Whe.', 'QA76.73.H37 Lip.', 'QA76.62 Bir.']
 
 book_names = ['The decline and fall of the Roman Empire',
@@ -14,8 +14,8 @@ book_names = ['The decline and fall of the Roman Empire',
               'Learn you a Haskell for great good!',
               'Introduction to functional programming using Haskell']
 
-maxlength = max([len(code) for code in label_codes])
-label_codes = [code.ljust(maxlength, ".") for code in label_codes]
+maxlength = max([len(code) for code in label_codes_original])
+label_codes = [code.ljust(maxlength, ".") for code in label_codes_original]
 database = list(zip(label_codes, book_names))
 
 
@@ -63,4 +63,4 @@ def closest_label_match(read_label):
     # Cutoff point 20, if higher cost empty name is returned
     if(min_cost > 20):
         return "", 1000
-    return database[min_index][0], database[min_index][1], min_cost
+    return label_codes_original[min_index], database[min_index][1], min_cost
