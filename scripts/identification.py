@@ -4,7 +4,7 @@ import time
 import pytesseract
 from utils import Rectangle, displayImage, movingAverage
 from scipy.signal import find_peaks, peak_widths
-from book_match import closest_label_match, book_names
+from book_match import closest_label_match, label_codes
 
 
 class Book:
@@ -186,24 +186,26 @@ def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     return 255 * (img > threshold)
 
 
-def findBook(booksimg, target_title):
+def findBook(booksimg, target_lcc_code):
     """
-    Finds the book with the given title in the image and displays its boundaries
+    Finds the book with the given LCC code in the image and displays its boundaries
     """
     target_book = None
     min_cost = 100
     for book in booksimg.books:
-        if book.matched_title == target_title and book.match_cost < min_cost:
+        if book.matched_lcc_code == target_lcc_code and book.match_cost < min_cost:
             min_cost = book.match_cost
             target_book = book
     if target_book:
-        print(str(target_title) + ' has been found!')
+        print(str(target_book.matched_title) + ' has been found!')
         print('    Book label location:' + str(target_book.label_rectangle.unpack()))
+        return target_book.label_rectangle
         # img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle])
         # cv.imwrite(target_title + '.png', img_display)
     else:
-        print(str(target_title) + ' could not be found :(')
-    return target_book.label_rectangle
+        print(str(target_lcc_code) + ' could not be found :(')
+        return None
+    
 
 
 if __name__ == '__main__':
@@ -225,6 +227,6 @@ if __name__ == '__main__':
     displayImage(booksimg.img_bgr, rectangles=booksimg.label_rectangles)
 
     print('\n==========================\n')
-    for book_title in book_names:
+    for book_title in label_codes:
         findBook(booksimg, book_title)
         print('==========================')
