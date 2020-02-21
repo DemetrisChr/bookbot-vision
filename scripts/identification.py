@@ -63,11 +63,22 @@ class Book:
 
 
 class BooksImage:
-    def __init__(self, filename):
-        if isinstance(filename, str):
-            self.img_bgr = cv.imread(filename)
+    def __init__(self, filename=None, webcam_idx=0):
+        self.img_bgr = None
+        if filename is None:
+            # Take picture from webcam
+            print('Taking picture from webcam...')
+            video_capture = cv.VideoCapture(index=webcam_idx)
+            if not video_capture.isOpened():
+                raise Exception('Could not open video device')
+            ret, self.img_bgr = video_capture.read()  # Read picture
+            video_capture.release()  # Close device
         else:
-            self.img_bgr = filename
+            if isinstance(filename, str):
+                self.img_bgr = cv.imread(filename)
+            else:
+                self.img_bgr = filename
+
         self.img_rgb = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2RGB)
         self.img_gray = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2GRAY)
 
@@ -169,6 +180,12 @@ class BooksImage:
             # cv.imwrite('label' + str(counter) + '.png', book.label_img_preprocessed)
             counter += 1
 
+    def preprocessAndReadLabels(self):
+        self.generateBinaryImage(num_intervals=20)
+        self.erodeBinaryImage()
+        self.findLabels()
+        self.parseLabels()
+
 
 def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
     """
@@ -198,23 +215,19 @@ def findBook(booksimg, target_lcc_code):
             target_book = book
     if target_book:
         print(str(target_book.matched_title) + ' has been found!')
-        print('    Book label location:' + str(target_book.label_rectangle.unpack()))
+        print('    Book label location: ' + str(target_book.label_rectangle.unpack()))
         return target_book.label_rectangle
         # img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle])
         # cv.imwrite(target_title + '.png', img_display)
     else:
-        print(str(target_lcc_code) + ' could not be found :(')
+        print(target_lcc_code + ' could not be found :(')
         return None
-    
 
 
 if __name__ == '__main__':
     start_time = time.time()
     booksimg = BooksImage('../pictures/books14_downsampled.png')
-    booksimg.generateBinaryImage(num_intervals=20)
-    booksimg.erodeBinaryImage()
-    booksimg.findLabels()
-    booksimg.parseLabels()
+    booksimg.preprocessAndReadLabels()
 
     for book in booksimg.books:
         print('=============')
@@ -227,6 +240,6 @@ if __name__ == '__main__':
     displayImage(booksimg.img_bgr, rectangles=booksimg.label_rectangles)
 
     print('\n==========================\n')
-    for book_title in label_codes:
-        findBook(booksimg, book_title)
+    for book_code in label_codes:
+        findBook(booksimg, book_code)
         print('==========================')
