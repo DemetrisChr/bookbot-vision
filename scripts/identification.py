@@ -130,8 +130,9 @@ class BooksImage:
 
         min_height = int(self.N / 10)  # Minimum number of white pixels for row to be considered for local max
         peaks, _ = find_peaks(moving_average_row, height=min_height)  # Finds the local maxima
-        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.7)
+        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.85)
         self.row_bounds = list(zip(top.astype('int'), bottom.astype('int')))
+        self.row_bounds = list(filter(lambda r: r[1] - r[0] > self.M / 20, self.row_bounds))
         print(self.row_bounds)
 
     def findLabelsWithinBounds(self, top, bottom, contour_approx_strength=0.05):
