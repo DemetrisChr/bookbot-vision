@@ -82,7 +82,7 @@ class Rectangle:
         cv.rectangle(img, (self.x, self.y), (self.x + self.w, self.y + self.h), colour, thickness)
 
 
-def displayImage(img, rectangles=None, lines=None):
+def displayImage(img, rectangles=None, lines=None, output=False):
     """
     Displays image with lines and rectangles (if there are any)
     """
@@ -102,6 +102,10 @@ def displayImage(img, rectangles=None, lines=None):
     img_display = cv.pyrDown(img_display, img_display)
     cv.imshow('Display window', img_display)
     cv.waitKey(0)
+
+    if output:
+        cv.imwrite('output.png', img_display)
+
     return img_display
 
 

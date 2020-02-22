@@ -9,7 +9,7 @@ import time
 import cv2
 from findSpine import findSpineBoundaries
 from utils import Rectangle
-from move_robot import adjust_robot_position
+#from move_robot import adjust_robot_position
 
 
 class LabelTracker:
@@ -72,7 +72,7 @@ class LabelTracker:
             self.vs = cv2.VideoCapture(self.video)
 
         # Open the window
-        cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE);
+        cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE)
 
     def track(self, label):
         """
@@ -91,7 +91,7 @@ class LabelTracker:
                 break
             # resize the frame (so we can process it faster) and grab the
             # frame dimensions
-            frame = imutils.resize(frame, width=500)
+            frame = imutils.resize(frame, width=500) if not self.webCam else frame
             (H, W) = frame.shape[:2]
 
             # Start tracking the given label
@@ -112,8 +112,8 @@ class LabelTracker:
                     (x, y, w, h) = [int(v) for v in box]
 
                     # Get the spine boundary lines
-                    label_ractangle = Rectangle(x, y, w, h)
-                    left_spine_bound, right_spine_bound = findSpineBoundaries(frame, label_ractangle)
+                    label_rectangle = Rectangle(x, y, w, h)
+                    left_spine_bound, right_spine_bound = findSpineBoundaries(frame, label_rectangle)
 
                     # Plot the lines
                     if left_spine_bound:
@@ -121,19 +121,21 @@ class LabelTracker:
                     if right_spine_bound:
                         right_spine_bound.plotOnImage(frame, thickness=2)
 
-                    # Adjust the position of the robot
-                    # Find a point on the spine boundaries which is in the middle of the frame height
-                    left_spine_coordinate = left_spine_bound.calculateXgivenY(H/2)
-                    right_spine_coordinate = right_spine_bound.calculateXgivenY(H/2)
+                    if (right_spine_bound is not None) and (left_spine_bound is not None):
 
-                    # Find a point on the middle of the spine
-                    spine_midpoint = left_spine_coordinate + (right_spine_coordinate - left_spine_coordinate) / 2
+                        # Adjust the position of the robot
+                        # Find a point on the spine boundaries which is in the middle of the frame height
+                        left_spine_coordinate = left_spine_bound.calculateXgivenY(H/2)
+                        right_spine_coordinate = right_spine_bound.calculateXgivenY(H/2)
 
-                    # Distance from the point on the middle of the spine to the middle of the frame
-                    # Range 100 if spine is on the very left of the frame to -100 on the right
-                    distance_to_middle = int(( (W/2 - spine_midpoint) * 100 ) / (W/2))
+                        # Find a point on the middle of the spine
+                        spine_midpoint = left_spine_coordinate + (right_spine_coordinate - left_spine_coordinate) / 2
 
-                    adjust_robot_position(distance_to_middle)
+                        # Distance from the point on the middle of the spine to the middle of the frame
+                        # Range 100 if spine is on the very left of the frame to -100 on the right
+                        distance_to_middle = int(( (W/2 - spine_midpoint) * 100 ) / (W/2))
+
+                    #adjust_robot_position(distance_to_middle)
 
                     # Draw the rectangle around the label
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -190,7 +192,7 @@ def center_spine(label_rectangle, camera_index):
     will adjust the robots position until the book is in the center of the frame
     Returns False if the label is no longer trackable
     """
-    lt = LabelTracker(camera_index, "kcf", True, None)
+    lt = LabelTracker(camera_index, "csrt", True, None)
     label = label_rectangle.unpack()
     return lt.trackLabel(label)
 
