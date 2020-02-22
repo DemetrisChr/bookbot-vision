@@ -121,6 +121,9 @@ class LabelTracker:
                     if right_spine_bound:
                         right_spine_bound.plotOnImage(frame, thickness=2)
 
+                    distance_to_middle = 0
+
+                    # If both spine bounds are in frame and found
                     if (right_spine_bound is not None) and (left_spine_bound is not None):
 
                         # Adjust the position of the robot
@@ -135,7 +138,23 @@ class LabelTracker:
                         # Range 100 if spine is on the very left of the frame to -100 on the right
                         distance_to_middle = int(( (W/2 - spine_midpoint) * 100 ) / (W/2))
 
-                    #adjust_robot_position(distance_to_middle)
+                    # If only one spine bound is found
+                    if (right_spine_bound is None) and (left_spine_bound is not None):
+
+                        # Distance from the point on the middle of the spine to the middle of the frame
+                        # Range 100 if spine is on the very left of the frame to -100 on the right
+                        left_spine_coordinate = left_spine_bound.calculateXgivenY(H/2)
+                        distance_to_middle = int(( (W/2 - left_spine_coordinate) * 100 ) / (W/2))
+
+                    if (right_spine_bound is not None) and (left_spine_bound is None):
+
+                        # Distance from the point on the middle of the spine to the middle of the frame
+                        # Range 100 if spine is on the very left of the frame to -100 on the right
+                        right_spine_coordinate = right_spine_bound.calculateXgivenY(H/2)
+                        distance_to_middle = int(( (W/2 - right_spine_coordinate) * 100 ) / (W/2))
+
+                    #if (right_spine_bound is not None) or (left_spine_bound is not None):
+                    #    adjust_robot_position(distance_to_middle)
 
                     # Draw the rectangle around the label
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
