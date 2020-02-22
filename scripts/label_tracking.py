@@ -4,10 +4,12 @@
 from imutils.video import VideoStream
 from imutils.video import FPS
 import argparse
+import imutils
 import time
 import cv2
 from findSpine import findSpineBoundaries
 from utils import Rectangle
+#from move_robot import adjust_robot_position
 
 
 class LabelTracker:
@@ -83,13 +85,13 @@ class LabelTracker:
             # grab the current frame, then handle if we are using a
             # VideoStream or VideoCapture object
             frame = self.vs.read()
-            # frame = frame[1] if self.webCam else frame
+            frame = frame[1] if not self.webCam else frame
             # check to see if we have reached the end of the stream
             if frame is None:
                 break
             # resize the frame (so we can process it faster) and grab the
             # frame dimensions
-            # frame = imutils.resize(frame, width=500)
+            frame = imutils.resize(frame, width=500) if not self.webCam else frame
             (H, W) = frame.shape[:2]
 
             # Start tracking the given label
@@ -110,8 +112,8 @@ class LabelTracker:
                     (x, y, w, h) = [int(v) for v in box]
 
                     # Get the spine boundary lines
-                    label_ractangle = Rectangle(x, y, w, h)
-                    left_spine_bound, right_spine_bound = findSpineBoundaries(frame, label_ractangle)
+                    label_rectangle = Rectangle(x, y, w, h)
+                    left_spine_bound, right_spine_bound = findSpineBoundaries(frame, label_rectangle)
 
                     # Plot the lines
                     if left_spine_bound:
@@ -119,7 +121,21 @@ class LabelTracker:
                     if right_spine_bound:
                         right_spine_bound.plotOnImage(frame, thickness=2)
 
-                    # TODO: Call adjust robot with left_spine_bound and right_spine_bound to center the book in the frame
+                    if (right_spine_bound is not None) and (left_spine_bound is not None):
+
+                        # Adjust the position of the robot
+                        # Find a point on the spine boundaries which is in the middle of the frame height
+                        left_spine_coordinate = left_spine_bound.calculateXgivenY(H/2)
+                        right_spine_coordinate = right_spine_bound.calculateXgivenY(H/2)
+
+                        # Find a point on the middle of the spine
+                        spine_midpoint = left_spine_coordinate + (right_spine_coordinate - left_spine_coordinate) / 2
+
+                        # Distance from the point on the middle of the spine to the middle of the frame
+                        # Range 100 if spine is on the very left of the frame to -100 on the right
+                        distance_to_middle = int(( (W/2 - spine_midpoint) * 100 ) / (W/2))
+
+                    #adjust_robot_position(distance_to_middle)
 
                     # Draw the rectangle around the label
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -185,7 +201,7 @@ if __name__ == '__main__':
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
     ap.add_argument("-v", "--video", type=str, help="path to input video file")
-    ap.add_argument("-t", "--tracker", type=str, default="kcf", help="OpenCV object tracker type")
+    ap.add_argument("-t", "--tracker", type=str, default="csrt", help="OpenCV object tracker type")
     args = vars(ap.parse_args())
 
     trackerType = args["tracker"]
