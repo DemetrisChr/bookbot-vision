@@ -15,6 +15,7 @@ book_names = ['The decline and fall of the Roman Empire',
               'Introduction to functional programming using Haskell']
 
 maxlength = max([len(code) for code in label_codes_original])
+label_codes = label_codes_original
 label_codes = [code.ljust(maxlength, ".") for code in label_codes_original]
 database = list(zip(label_codes, book_names))
 
@@ -61,6 +62,6 @@ def closest_label_match(read_label):
             min_index = i
 
     # Cutoff point 20, if higher cost empty name is returned
-    if(min_cost > 20):
-        return "", 1000
+    if(min_cost > 15):
+        return "", "", min_cost
     return label_codes_original[min_index], database[min_index][1], min_cost

@@ -22,7 +22,7 @@ class Book:
         Does some preprocessing to the image of the label and uses OCR to read the text.
         """
         # Binarise the image
-        img = rowLuminosityBinarisation(self.label_img, num_intervals=1, threshold_coef=0.8).astype('uint8')
+        img = rowLuminosityBinarisation(self.label_img, num_intervals=1, threshold_coef=0.6).astype('uint8')
 
         # Resize image
         scale_percent = 200  # Percentage of original size
@@ -32,10 +32,10 @@ class Book:
         img = cv.resize(img, dim, interpolation=cv.INTER_AREA)
 
         # Add white border around the image
-        img = cv.copyMakeBorder(img, top=100, bottom=100, left=100, right=100, borderType=cv.BORDER_CONSTANT, value=255)
+        img = cv.copyMakeBorder(img, top=50, bottom=50, left=50, right=50, borderType=cv.BORDER_CONSTANT, value=255)
 
         # Apply Gaussian blurring
-        img = cv.GaussianBlur(img, (5, 5), 1)
+        img = cv.GaussianBlur(img, (5, 5), 2)
 
         # Dilate the image
         kernel = np.ones((5, 5), np.uint8)
@@ -58,8 +58,10 @@ class Book:
                 '\nEdit distance: ' + str(self.match_cost)
         elif self.label_ocr_text == '':
             return 'EMPTY LABEL'
-        else:
-            return 'NO MATCH FOUND'
+        else: 
+            return 'NO MATCH FOUND' + \
+                '\nEdit distance:    ' + str(self.match_cost) + \
+                '\n' + self.label_ocr_text
 
 
 class BooksImage:
@@ -78,7 +80,6 @@ class BooksImage:
                 self.img_bgr = cv.imread(filename)
             else:
                 self.img_bgr = filename
-
         self.img_rgb = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2RGB)
         self.img_gray = cv.cvtColor(self.img_bgr, cv.COLOR_BGR2GRAY)
 
@@ -126,11 +127,11 @@ class BooksImage:
         """
         # TODO Ignore internal row bounds
         count_row = np.sum(self.img_eroded, axis=1) / 255  # Number of white pixels in each row
-        moving_average_row = movingAverage(count_row, 300)  # Moving average of white pixels for each row
+        moving_average_row = movingAverage(count_row, 100)  # Moving average of white pixels for each row
 
         min_height = int(self.N / 10)  # Minimum number of white pixels for row to be considered for local max
         peaks, _ = find_peaks(moving_average_row, height=min_height)  # Finds the local maxima
-        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.85)
+        _, _, top, bottom = peak_widths(moving_average_row, peaks, rel_height=0.5)
         self.row_bounds = list(zip(top.astype('int'), bottom.astype('int')))
         self.row_bounds = list(filter(lambda r: r[1] - r[0] > self.M / 20, self.row_bounds))
         print(self.row_bounds)
@@ -139,8 +140,8 @@ class BooksImage:
         """
         Finds labels that are within the specified bounds
         """
-        min_contour_area = self.M * self.N / 600
-        max_contour_area = self.M * self.N / 25
+        min_contour_area = self.M * self.N / 100
+        max_contour_area = self.M * self.N / 6
         contours, hierarchy = cv.findContours(self.img_eroded[top:bottom, :], cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         largest_contours = list(filter(lambda c: cv.contourArea(c) >= min_contour_area and cv.contourArea(c) <= max_contour_area, contours))
 
@@ -161,7 +162,7 @@ class BooksImage:
         """
         self.findRowBounds()
         for top, bottom in self.row_bounds:
-            self.findLabelsWithinBounds(top, bottom)
+            self.findLabelsWithinBounds(top, bottom, contour_approx_strength=contour_approx_strength)
 
         # self.label_rectangles = removeInnerRectangles(self.label_rectangles)
 
@@ -183,10 +184,13 @@ class BooksImage:
             counter += 1
 
     def preprocessAndReadLabels(self):
-        self.generateBinaryImage(num_intervals=20)
+        self.generateBinaryImage(num_intervals=20, threshold_coef=0.85)
         self.erodeBinaryImage()
         self.findLabels()
         self.parseLabels()
+        displayImage(self.img_binary, rectangles=self.label_rectangles)
+        displayImage(self.img_eroded, rectangles=self.label_rectangles)
+        displayImage(self.img_bgr, rectangles=self.label_rectangles)
 
 
 def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
@@ -230,7 +234,7 @@ def findBook(booksimg, target_lcc_code):
 
 def main():
     start_time = time.time()
-    booksimg = BooksImage('../pictures/webcam.jpg')
+    booksimg = BooksImage('../pictures/webcam7.jpg')
     booksimg.preprocessAndReadLabels()
 
     for book in booksimg.books:
@@ -241,6 +245,7 @@ def main():
     print('==========================')
 
     displayImage(booksimg.img_binary, rectangles=booksimg.label_rectangles)
+    displayImage(booksimg.img_eroded, rectangles=booksimg.label_rectangles)
     displayImage(booksimg.img_bgr, rectangles=booksimg.label_rectangles)
 
     print('\n==========================\n')
