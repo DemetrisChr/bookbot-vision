@@ -1,57 +1,27 @@
-#!/usr/bin/env python
-
 import rospy
+import sys
+
+sys.path_insert('/home/pi/vision/msgs')
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import LaserScan
-from time import time
 
-def laser_scan_callback(data):
-    print data.ranges
 
-def read_laser_scan_data():
-    rospy.Subscriber('scan',LaserScan,laser_scan_callback)
+class MoveRobot():
+    def __init__(self):
+        rospy.init_node('move_robot', anonymous=True)
+        self.pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+        self.mc = Twist()
 
-def move_motor(fwd,ang):
-    pub = rospy.Publisher('cmd_vel',Twist,queue_size = 10)
-    mc = Twist()
-    mc.linear.x = fwd
-    mc.angular.z = ang
-    pub.publish(mc)
+    def setSpeed(self, speed):
+        self.mc.linear.x = speed
+        self.pub.publish(self.mc)
 
-# Adjustment value ranges from -100 to 100
-def adjust_robot_position(adjustment_value):
-    rospy.init_node('example_script',anonymous=True)
-
-    start_time = time()
-    duration = 1 #in seconds
-
-    forward_speed = adjustment_value * 0.65 / 100
-    turn_speed = 0
-
-    while time()<start_time+duration:
-        try:
-            read_laser_scan_data()
-            move_motor(forward_speed,turn_speed)
-        except rospy.ROSInterruptException:
-            pass
-    else:
-        move_motor(0,0)
+    def adjustSpeed(self, adjustment_value):
+        speed = adjustment_value * 0.65 / 100
+        self.setSpeed(speed)
 
 
 if __name__ == '__main__':
-    rospy.init_node('example_script',anonymous=True)
-
-    start_time = time()
-    duration = 5 #in seconds
-
-    forward_speed = 1
-    turn_speed = 0
-
-    while time()<start_time+duration:
-        try:
-            read_laser_scan_data()
-            move_motor(forward_speed,turn_speed)
-        except rospy.ROSInterruptException:
-            pass
-    else:
-        move_motor(0,0)
+    adjustment_values = list(range(-100, 101, 2))
+    mv = MoveRobot()
+    for adj_value in adjustment_values:
+        mv.adjustSpeed(adj_value)
