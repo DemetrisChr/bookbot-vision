@@ -81,6 +81,7 @@ class LabelTracker:
         Displays the video with the tracked objects.
         Returns false if the label is lost
         """
+        prev_speed = 0
         mv = MoveRobot()
         # loop over frames from the video stream
         while True:
@@ -156,8 +157,15 @@ class LabelTracker:
                         distance_to_middle = int(( (W/2 - right_spine_coordinate) * 100 ) / (W/2))
 
                     if (right_spine_bound is not None) or (left_spine_bound is not None):
-                        mv.adjustSpeed(distance_to_middle)
-
+                        if abs(distance_to_middle) < 5:
+                            speed = 0
+                        elif distance_to_middle < 0:
+                            speed = 0.01
+                        else:
+                            speed = -0.01
+                        if speed != prev_speed:
+                            mv.setSpeed(speed)
+                        prev_speed = speed
                     # Draw the rectangle around the label
                     if debug:
                         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
