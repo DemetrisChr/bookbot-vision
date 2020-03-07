@@ -160,10 +160,11 @@ class LabelTracker:
                         if abs(distance_to_middle) < 5:
                             speed = 0
                         elif distance_to_middle < 0:
-                            speed = 0.01
+                            speed = 0.001
                         else:
-                            speed = -0.01
+                            speed = -0.001
                         if speed != prev_speed:
+                            print("Moving with speed " + str(speed)+ " !")
                             mv.setSpeed(speed)
                         prev_speed = speed
                     # Draw the rectangle around the label

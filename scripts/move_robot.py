@@ -9,7 +9,7 @@ from time import time, sleep
 class MoveRobot():
     def __init__(self):
         rospy.init_node('move_robot', anonymous=True)
-        self.pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+        self.pub = rospy.Publisher('om_with_tb3/cmd_vel', Twist, queue_size=10)
         self.mc = Twist()
 
     def setSpeed(self, speed):
