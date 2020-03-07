@@ -27,14 +27,14 @@ class LabelTracker:
         self.video = video
         self.camera_index = camera_index
 
-    def trackLabel(self, label):
+    def trackLabel(self, label, debug=False):
         """
         Sets up and tracks a given label
         """
-        self.setUp()
-        return self.track(label)
+        self.setUp(debug)
+        return self.track(label, debug)
 
-    def setUp(self):
+    def setUp(self, debug=False):
         """
         Set up everything for the video stream and tracking
         """
@@ -72,7 +72,8 @@ class LabelTracker:
             self.vs = cv2.VideoCapture(self.video)
 
         # Open the window
-        cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE)
+        if debug:
+            cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE)
 
     def track(self, label, debug=False):
         """
@@ -166,7 +167,7 @@ class LabelTracker:
                 # update the FPS counter
                 self.fps.update()
                 self.fps.stop()
-
+                print("FPS", "{:.2f}".format(self.fps.fps()))
                 # initialize the set of information we'll be displaying on
                 # the frame
                 info = [
