@@ -9,7 +9,7 @@ import time
 import cv2
 from findSpine import findSpineBoundaries
 from utils import Rectangle
-#from move_robot import adjust_robot_position
+from move_robot import MoveRobot
 
 
 class LabelTracker:
@@ -80,6 +80,7 @@ class LabelTracker:
         Displays the video with the tracked objects.
         Returns false if the label is lost
         """
+        mv = MoveRobot()
         # loop over frames from the video stream
         while True:
             # grab the current frame, then handle if we are using a
@@ -153,8 +154,8 @@ class LabelTracker:
                         right_spine_coordinate = right_spine_bound.calculateXgivenY(H/2)
                         distance_to_middle = int(( (W/2 - right_spine_coordinate) * 100 ) / (W/2))
 
-                    #if (right_spine_bound is not None) or (left_spine_bound is not None):
-                    #    adjust_robot_position(distance_to_middle)
+                    if (right_spine_bound is not None) or (left_spine_bound is not None):
+                        mv.adjustSpeed(distance_to_middle)
 
                     # Draw the rectangle around the label
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -195,6 +196,7 @@ class LabelTracker:
             # if the `q` key was pressed, break from the loop
             elif key == ord("q"):
                 break
+        mv.shutDown()
         # if we are using a webcam, release the pointer
         if self.webCam:
             self.vs.stop()
