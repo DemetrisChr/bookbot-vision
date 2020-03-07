@@ -74,7 +74,7 @@ class LabelTracker:
         # Open the window
         cv2.namedWindow("Frame", cv2.WINDOW_AUTOSIZE)
 
-    def track(self, label):
+    def track(self, label, debug=False):
         """
         Takes a label and tracks it in a video or webcam stram.
         Displays the video with the tracked objects.
@@ -117,9 +117,9 @@ class LabelTracker:
                     left_spine_bound, right_spine_bound = findSpineBoundaries(frame, label_rectangle)
 
                     # Plot the lines
-                    if left_spine_bound:
+                    if debug and left_spine_bound:
                         left_spine_bound.plotOnImage(frame, thickness=2)
-                    if right_spine_bound:
+                    if debug and right_spine_bound:
                         right_spine_bound.plotOnImage(frame, thickness=2)
 
                     distance_to_middle = 0
@@ -158,7 +158,8 @@ class LabelTracker:
                         mv.adjustSpeed(distance_to_middle)
 
                     # Draw the rectangle around the label
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                    if debug:
+                        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 #else:
                     #return success
 
@@ -174,13 +175,16 @@ class LabelTracker:
                     ("FPS", "{:.2f}".format(self.fps.fps())),
                 ]
                 # loop over the info tuples and draw them on our frame
-                for (i, (k, v)) in enumerate(info):
-                    text = "{}: {}".format(k, v)
-                    cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                if debug:
+                    for (i, (k, v)) in enumerate(info):
+                        text = "{}: {}".format(k, v)
+                        cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
             # show the output frame
-            cv2.imshow("Frame", frame)
+            if debug:
+                cv2.imshow("Frame", frame)
             key = cv2.waitKey(1) & 0xFF
+            """
             # if the 's' key is selected, we are going to "select" a bounding
             # box to track
             if key == ord("s"):
@@ -192,9 +196,9 @@ class LabelTracker:
                 # coordinates, then start the FPS throughput estimator as well
                 self.tracker.init(frame, self.initBB)
                 self.fps = FPS().start()
-
+            """
             # if the `q` key was pressed, break from the loop
-            elif key == ord("q"):
+            if key == ord("q"):
                 break
         mv.shutDown()
         # if we are using a webcam, release the pointer
@@ -207,7 +211,7 @@ class LabelTracker:
         cv2.destroyAllWindows()
 
 
-def center_spine(label_rectangle, camera_index):
+def center_spine(label_rectangle, camera_index, debug=False):
     """
     Takes the rectangle around the label and
     will adjust the robots position until the book is in the center of the frame
@@ -215,7 +219,7 @@ def center_spine(label_rectangle, camera_index):
     """
     lt = LabelTracker(camera_index, "csrt", True, None)
     label = label_rectangle.unpack()
-    return lt.trackLabel(label)
+    return lt.trackLabel(label, debug)
 
 
 if __name__ == '__main__':
