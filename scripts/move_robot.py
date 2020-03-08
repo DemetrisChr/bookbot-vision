@@ -1,15 +1,21 @@
 import rospy
 import sys
+from time import sleep
 
-sys.path.insert(1, '/home/pi/vision/msgs')
+sys.path.insert(1, '/home/pi/vision/dist-packages')
 from geometry_msgs.msg import Twist
+import rostopic
 
-from time import time, sleep
+
 
 class MoveRobot():
     def __init__(self):
         rospy.init_node('move_robot', anonymous=True)
-        self.pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+        publishers, subscribers = rostopic.get_topic_list()
+        topic = '/om_with_tb3/cmd_vel'
+        if topic not in [sub[0] for sub in subscribers]:
+            topic = '/cmd_vel'
+        self.pub = rospy.Publisher(topic, Twist, queue_size=10)
         self.mc = Twist()
 
     def setSpeed(self, speed):
@@ -37,7 +43,6 @@ if __name__ == '__main__':
     for adj_value in adjustment_values:
         mv.adjustSpeed(adj_value)
     """
-    start_time = time()
     mv = MoveRobot()
     mv.adjustSpeed(50)
     sleep(2)
