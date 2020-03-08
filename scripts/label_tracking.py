@@ -7,13 +7,55 @@ import argparse
 import imutils
 import time
 import cv2
-from findSpine import findSpineBoundaries
+from findSpine import findSpineBoundaries, findBookBoundaries
 from utils import Rectangle
 from move_robot import MoveRobot
+from threading import Thread
+
+
+class CameraVideoStream:
+    def __init__(self, camera_idx):
+        """
+        Initialises the camera stream and reads the first frame
+        """
+        self.stream = cv2.VideoCapture(camera_idx)
+        self.grabbed, self.frame = self.stream.read()
+        self.boundary_lines = findBookBoundaries(self.frame)
+        self.stopped = False
+
+    def start(self):
+        """
+        Starts the thread to read frames from the video stream
+        """
+        Thread(target=self.update, args=()).start()
+        return self
+
+    def update(self):
+        """
+        Loops indefinitely and reads frames until the thread is stopped
+        """
+        while True:
+            if self.stopped:
+                return
+            else:
+                self.grabbed, self.frame = self.stream.read()
+                self.boundary_lines = findBookBoundaries(self.frame)
+
+    def read(self):
+        """
+        Returns the frame most recently read
+        """
+        return self.frame, self.boundary_lines
+
+    def stop(self):
+        """
+        Stops the thread
+        """
+        self.stopped = True
 
 
 class LabelTracker:
-    def __init__(self, camera_index, trackerType, webCam, video):
+    def __init__(self, camera_index, trackerType, webCam, video=None):
         self.tracker = None
 
         # initialize the bounding box coordinates of the object we are going to track
@@ -26,6 +68,7 @@ class LabelTracker:
         self.webCam = webCam
         self.video = video
         self.camera_index = camera_index
+        self.video_stream = CameraVideoStream(camera_index)
 
     def trackLabel(self, label, debug=False):
         """
@@ -65,8 +108,12 @@ class LabelTracker:
         # If using the webcam, grab the reference to the web cam
         if self.webCam:
             print("[INFO] starting video stream...")
+            """
             self.vs = VideoStream(src=self.camera_index).start()
             time.sleep(1.0)
+            """
+            self.video_stream.start()
+
         # otherwise, grab a reference to the video file
         else:
             self.vs = cv2.VideoCapture(self.video)
@@ -87,8 +134,11 @@ class LabelTracker:
         while True:
             # grab the current frame, then handle if we are using a
             # VideoStream or VideoCapture object
+            """
             frame = self.vs.read()
             frame = frame[1] if not self.webCam else frame
+            """
+            frame, boundary_lines = self.video_stream.read()
             # check to see if we have reached the end of the stream
             if frame is None:
                 break
@@ -116,7 +166,7 @@ class LabelTracker:
 
                     # Get the spine boundary lines
                     label_rectangle = Rectangle(x, y, w, h)
-                    left_spine_bound, right_spine_bound = findSpineBoundaries(frame, label_rectangle)
+                    left_spine_bound, right_spine_bound = findSpineBoundaries(label_rectangle, boundary_lines)
 
                     # Plot the lines
                     if debug and left_spine_bound:
@@ -213,7 +263,8 @@ class LabelTracker:
         mv.shutDown()
         # if we are using a webcam, release the pointer
         if self.webCam:
-            self.vs.stop()
+            #self.vs.stop()
+            self.video_stream.stop()
         # otherwise, release the file pointer
         else:
             self.vs.release()
