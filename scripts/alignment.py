@@ -1,14 +1,35 @@
 from identification import BooksImage, findBook
 from label_tracking import center_spine
+from move_robot import MoveRobot
 import argparse
+from time import sleep
 
 
-def alignment(lcc_code, camera_idx=0):
+def processImage(camera_idx=0):
     booksimg = BooksImage(camera_idx=camera_idx)
     booksimg.preprocessAndReadLabels()
+    return booksimg
+
+
+def alignment(lcc_code, camera_idx=0, num_find_attempts=5):
+    booksimg = processImage(camera_idx)
+    mv = MoveRobot()
     label_rectangle = findBook(booksimg, lcc_code)
-    if label_rectangle is not None:
-        center_spine(label_rectangle, camera_idx)
+    count_failures = 0
+    while (label_rectangle is None):
+        count_failures += 1
+        if count_failures < num_find_attempts:
+            print('Moving forward and trying again...')
+        else:
+            print('Failed to find book after ' + str(count_failures) + 'attempts')
+            return
+        mv.setSpeed(0.05)
+        sleep(1)
+        mv.setSpeed(0)
+        booksimg = processImage(camera_idx)
+        label_rectangle = findBook(booksimg, lcc_code)
+    center_spine(label_rectangle, camera_idx, debug=True)
+    mv.shutDown()
 
 
 if __name__ == '__main__':
@@ -19,4 +40,4 @@ if __name__ == '__main__':
     if label is None:
         with open('label.txt', 'r') as f:
             label = f.readline().replace('\n', '')
-    alignment(label, 1)
+    alignment(label, 0)
