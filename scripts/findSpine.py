@@ -28,14 +28,14 @@ def findBookBoundaries(image):
     return boundary_lines
 
 
-def findSpineBoundaries(image, label_rectangle):
+def findSpineBoundaries(label_rectangle, boundary_lines):
     """
     Finds the left and right boundaries of the spine of this book
     """
     left_lines = []
     right_lines = []
 
-    lines = findBookBoundaries(image)
+    lines = boundary_lines
     if len(lines) == 0:
         return None, None
 
