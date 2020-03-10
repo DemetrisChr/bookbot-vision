@@ -5,6 +5,7 @@ import pytesseract
 from utils import Rectangle, displayImage, movingAverage
 from scipy.signal import find_peaks, peak_widths
 from book_match import closest_label_match, label_codes_original
+from threading import Thread
 
 
 class Book:
@@ -142,7 +143,7 @@ class BooksImage:
         """
         min_contour_area = self.M * self.N / 100
         max_contour_area = self.M * self.N / 6
-        contours, hierarchy = cv.findContours(self.img_eroded[top:bottom, :], cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        _, contours, hierarchy = cv.findContours(self.img_eroded[top:bottom, :], cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         largest_contours = list(filter(lambda c: cv.contourArea(c) >= min_contour_area and cv.contourArea(c) <= max_contour_area, contours))
 
         approximated_contours = []
@@ -171,26 +172,35 @@ class BooksImage:
         Uses Optical Character Recognition (OCR) to parse the text from the
         labels.
         """
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # For Windows only
-        counter = 1
+        # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # For Windows only
+
+        threads = []
+        books = []
         for rectangle in self.label_rectangles:
             (x, y, w, h) = rectangle.unpack()
             img_slice = self.img_gray[y:y + h, x:x + w].copy()
             book = Book(rectangle, img_slice)
-            book.parseBookLabel()
-            book.findMatch()
-            self.books.append(book)
-            # cv.imwrite('label' + str(counter) + '.png', book.label_img_preprocessed)
-            counter += 1
+            thread = Thread(target=book.parseBookLabel)
+            thread.start()
+            threads.append(thread)
+            books.append(book)
+
+        # counter = 1
+        for i in range(len(books)):
+            threads[i].join()
+            books[i].findMatch()
+            self.books.append(books[i])
+            # cv.imwrite('label' + str(counter) + '.png', books[i].label_img_preprocessed)
+            # counter += 1
 
     def preprocessAndReadLabels(self):
         self.generateBinaryImage(num_intervals=20, threshold_coef=0.85)
         self.erodeBinaryImage()
         self.findLabels()
         self.parseLabels()
-        displayImage(self.img_binary, rectangles=self.label_rectangles)
-        displayImage(self.img_eroded, rectangles=self.label_rectangles)
-        displayImage(self.img_bgr, rectangles=self.label_rectangles)
+        # displayImage(self.img_binary, rectangles=self.label_rectangles)
+        # displayImage(self.img_eroded, rectangles=self.label_rectangles)
+        # displayImage(self.img_bgr, rectangles=self.label_rectangles)
 
 
 def rowLuminosityBinarisation(img, num_intervals, threshold_coef):
