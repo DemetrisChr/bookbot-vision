@@ -214,8 +214,8 @@ class LabelTracker:
                         else:
                             speed = -0.001
                         if speed != prev_speed:
-                            print("Moving with speed " + str(speed)+ " !")
-                            mv.setSpeed(speed)
+                            print("Moving with speed " + str(speed) + " !")
+                            Thread(target=mv.setSpeed, args=(speed,)).start()
                         prev_speed = speed
                     # Draw the rectangle around the label
                     if debug:
