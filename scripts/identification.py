@@ -4,7 +4,7 @@ import time
 import pytesseract
 from utils import Rectangle, displayImage, movingAverage
 from scipy.signal import find_peaks, peak_widths
-from book_match import closest_label_match, label_codes_original
+from book_match import BookMatch, label_codes_original
 from threading import Thread
 
 
@@ -14,7 +14,6 @@ class Book:
         self.label_img = label_img
         self.label_img_preprocessed = None
         self.label_ocr_text = None
-        self.matched_title = None
         self.matched_lcc_code = None
         self.match_cost = None
 
@@ -45,17 +44,18 @@ class Book:
         self.label_img_preprocessed = img
         self.label_ocr_text = pytesseract.image_to_string(self.label_img_preprocessed)  # , config='bazaar --oem 0'))
 
-    def findMatch(self):
+    def findMatch(self, all_labels):
         """
         Finds the closest match to the label, using levenshtein distance
         """
         if len(self.label_ocr_text) > 0:
-            self.matched_lcc_code, self.matched_title, self.match_cost = closest_label_match(self.label_ocr_text)
+            bm = BookMatch(all_labels=all_labels)
+            self.matched_lcc_code, self.match_cost = bm.closest_label_match(self.label_ocr_text)
 
     def __str__(self):
-        if self.matched_title:
+        if self.matched_lcc_code:
             return self.label_ocr_text + \
-                '\nBest match:    ' + self.matched_title + \
+                '\nBest match:    ' + self.matched_lcc_code + \
                 '\nEdit distance: ' + str(self.match_cost)
         elif self.label_ocr_text == '':
             return 'EMPTY LABEL'
@@ -167,7 +167,7 @@ class BooksImage:
 
         # self.label_rectangles = removeInnerRectangles(self.label_rectangles)
 
-    def parseLabels(self):
+    def parseLabels(self, all_labels):
         """
         Uses Optical Character Recognition (OCR) to parse the text from the
         labels.
@@ -188,16 +188,16 @@ class BooksImage:
         # counter = 1
         for i in range(len(books)):
             threads[i].join()
-            books[i].findMatch()
+            books[i].findMatch(all_labels)
             self.books.append(books[i])
             # cv.imwrite('label' + str(counter) + '.png', books[i].label_img_preprocessed)
             # counter += 1
 
-    def preprocessAndReadLabels(self):
+    def preprocessAndReadLabels(self, all_labels):
         self.generateBinaryImage(num_intervals=20, threshold_coef=0.85)
         self.erodeBinaryImage()
         self.findLabels()
-        self.parseLabels()
+        self.parseLabels(all_labels)
         # displayImage(self.img_binary, rectangles=self.label_rectangles)
         # displayImage(self.img_eroded, rectangles=self.label_rectangles)
         # displayImage(self.img_bgr, rectangles=self.label_rectangles)
@@ -232,7 +232,7 @@ def findBook(booksimg, target_lcc_code):
             min_cost = book.match_cost
             target_book = book
     if target_book is not None:
-        print(str(target_book.matched_title) + ' has been found!')
+        print(str(target_book.matched_lcc_code) + ' has been found!')
         print('    Book label location: ' + str(target_book.label_rectangle.unpack()))
         return target_book.label_rectangle
         # img_display = displayImage(booksimg.img_bgr, rectangles=[target_book.label_rectangle])
@@ -245,7 +245,7 @@ def findBook(booksimg, target_lcc_code):
 def main():
     start_time = time.time()
     booksimg = BooksImage('../pictures/webcam7.jpg')
-    booksimg.preprocessAndReadLabels()
+    booksimg.preprocessAndReadLabels(label_codes_original)
 
     for book in booksimg.books:
         print('=============')

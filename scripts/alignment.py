@@ -1,18 +1,19 @@
 from identification import BooksImage, findBook
 from label_tracking import center_spine
 from move_robot import MoveRobot
+from book_match import label_codes_original
 import argparse
 from time import sleep
 
 
-def processImage(camera_idx=0):
+def processImage(camera_idx=0, all_labels=label_codes_original):
     booksimg = BooksImage(camera_idx=camera_idx)
-    booksimg.preprocessAndReadLabels()
+    booksimg.preprocessAndReadLabels(all_labels)
     return booksimg
 
 
-def alignment(lcc_code, camera_idx=0, num_find_attempts=5):
-    booksimg = processImage(camera_idx)
+def alignment(lcc_code, camera_idx=0, num_find_attempts=5, all_labels=label_codes_original):
+    booksimg = processImage(camera_idx, all_labels)
     mv = MoveRobot()
     label_rectangle = findBook(booksimg, lcc_code)
     count_failures = 0
