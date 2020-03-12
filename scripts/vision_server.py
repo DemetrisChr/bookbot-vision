@@ -1,6 +1,6 @@
 import socket
 import json
-from alignment import alignment
+#from alignment import alignment
 
 class VisionServer:
     def __init__(self, host, port):
@@ -24,12 +24,17 @@ class VisionServer:
                     print('Books on shelf = ' + str(all_labels))
                     print('Target book    = ' + target_label)
                     print('Finding location of book and positioning the robot in front of it...')
-                    alignment(lcc_code=target_label, camera_idx=0, all_labels=all_labels)
-                    conn.sendall(b'Success!')
+                    #res = alignment(lcc_code=target_label, camera_idx=0, all_labels=all_labels)
+                    res = 1
+                    if res:
+                        conn.sendall(b'SUCCESS')
+                    else:
+                        conn.sendall(b'FAILURE')
                     print("Sent!")
             except KeyboardInterrupt:
                 print('\nClosing socket...')
                 self.socket.close()
+                break
 
 
 def parseReceivedData(data):

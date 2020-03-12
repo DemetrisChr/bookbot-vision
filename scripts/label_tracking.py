@@ -129,6 +129,7 @@ class LabelTracker:
         Returns false if the label is lost
         """
         prev_speed = 0
+        count_frames_speed_0 = 0
         mv = MoveRobot()
         # loop over frames from the video stream
         while True:
@@ -138,6 +139,8 @@ class LabelTracker:
             frame = self.vs.read()
             frame = frame[1] if not self.webCam else frame
             """
+            if count_frames_speed_0 >= 10:
+                break
             frame, boundary_lines = self.video_stream.read()
             # check to see if we have reached the end of the stream
             if frame is None:
@@ -209,10 +212,13 @@ class LabelTracker:
                     if (right_spine_bound is not None) or (left_spine_bound is not None):
                         if abs(distance_to_middle) < 5:
                             speed = 0
+                            count_frames_speed_0 += 1
                         elif distance_to_middle < 0:
                             speed = 0.001
+                            count_frames_speed_0 = 0
                         else:
                             speed = -0.001
+                            count_frames_speed_0 = 0
                         if speed != prev_speed:
                             print("Moving with speed " + str(speed) + " !")
                             Thread(target=mv.setSpeed, args=(speed,)).start()
@@ -244,19 +250,6 @@ class LabelTracker:
             if debug:
                 cv2.imshow("Frame", frame)
             key = cv2.waitKey(1) & 0xFF
-            """
-            # if the 's' key is selected, we are going to "select" a bounding
-            # box to track
-            if key == ord("s"):
-                # select the bounding box of the object we want to track (make
-                # sure you press ENTER or SPACE after selecting the ROI)
-                cv2.imwrite("frame.jpg", frame)
-                self.initBB = cv2.selectROI("Frame", frame, fromCenter=False, showCrosshair=True)
-                # start OpenCV object tracker using the supplied bounding box
-                # coordinates, then start the FPS throughput estimator as well
-                self.tracker.init(frame, self.initBB)
-                self.fps = FPS().start()
-            """
             # if the `q` key was pressed, break from the loop
             if key == ord("q"):
                 break
@@ -270,6 +263,7 @@ class LabelTracker:
             self.vs.release()
         # close all windows
         cv2.destroyAllWindows()
+        return True
 
 
 def center_spine(label_rectangle, camera_index, debug=False):

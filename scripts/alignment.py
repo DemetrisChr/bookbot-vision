@@ -29,8 +29,9 @@ def alignment(lcc_code, camera_idx=0, num_find_attempts=5, all_labels=label_code
         mv.setSpeed(0)
         booksimg = processImage(camera_idx)
         label_rectangle = findBook(booksimg, lcc_code)
-    center_spine(label_rectangle, camera_idx, debug=True)
+    res = center_spine(label_rectangle, camera_idx, debug=True)
     mv.shutDown()
+    return res
 
 
 if __name__ == '__main__':

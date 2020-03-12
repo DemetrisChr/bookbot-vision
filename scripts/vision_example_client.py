@@ -15,7 +15,7 @@ PORT = 50000
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
-    s.sendall(json.dumps(to_send).encode('ascii'))
+    s.sendall(json.dumps(to_send).encode())
     data = s.recv(1024)
 
 print('Received: ', data)
