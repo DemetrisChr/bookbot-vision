@@ -23,7 +23,7 @@ def alignment(lcc_code, camera_idx=0, num_find_attempts=5, all_labels=label_code
             print('Moving forward and trying again...')
         else:
             print('Failed to find book after ' + str(count_failures) + 'attempts')
-            return
+            return False
         mv.setSpeed(0.05)
         sleep(1)
         mv.setSpeed(0)
@@ -42,4 +42,4 @@ if __name__ == '__main__':
     if label is None:
         with open('label.txt', 'r') as f:
             label = f.readline().replace('\n', '')
-    alignment(label, 0)
+    alignment(lcc_code=label, camera_idx=0)
