@@ -50,5 +50,5 @@ class BookMatch():
 
         # Cutoff point 20, if higher cost empty name is returned
         if(min_cost > 15):
-            return "", "", min_cost
+            return "", min_cost
         return self.all_labels_original[min_index], min_cost
