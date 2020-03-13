@@ -2,7 +2,7 @@ import rospy
 import sys
 from time import sleep
 
-sys.path.insert(1, '/home/pi/vision/dist-packages')
+sys.path.insert(1, '/catkin_tools_ws/devel/lib/python2.7/dist-packages')
 from geometry_msgs.msg import Twist
 import rostopic
 
