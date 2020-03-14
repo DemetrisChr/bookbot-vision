@@ -210,14 +210,18 @@ class LabelTracker:
                         distance_to_middle = int(( (W/2 - right_spine_coordinate) * 100 ) / (W/2))
 
                     if (right_spine_bound is not None) or (left_spine_bound is not None):
+                        if abs(distance_to_middle < 20):
+                            abs_speed = 0.005
+                        else:
+                            abs_speed = 0.001
                         if abs(distance_to_middle) < 5:
                             speed = 0
                             count_frames_speed_0 += 1
                         elif distance_to_middle < 0:
-                            speed = 0.001
+                            speed = abs_speed
                             count_frames_speed_0 = 0
                         else:
-                            speed = -0.001
+                            speed = -abs_speed
                             count_frames_speed_0 = 0
                         if speed != prev_speed:
                             print("Moving with speed " + str(speed) + " !")
